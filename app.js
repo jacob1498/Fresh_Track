@@ -26,10 +26,20 @@ let calcInputValue = '0';
 // Authentication Logic
 document.getElementById('login-form').addEventListener('submit', (e) => {
     e.preventDefault();
-    localStorage.setItem('isLoggedIn', 'true');
-    document.getElementById('login-view').classList.add('hidden');
-    document.getElementById('main-layout').classList.remove('hidden');
-    showView('dashboard');
+    const emailInput = e.target.querySelector('input[type="email"]').value;
+    const passwordInput = e.target.querySelector('input[type="password"]').value;
+    
+    const storedUser = localStorage.getItem('ft_username') || 'admin@example.com';
+    const storedPass = localStorage.getItem('ft_password') || 'admin123';
+
+    if (emailInput === storedUser && passwordInput === storedPass) {
+        localStorage.setItem('isLoggedIn', 'true');
+        document.getElementById('login-view').classList.add('hidden');
+        document.getElementById('main-layout').classList.remove('hidden');
+        showView('dashboard');
+    } else {
+        alert('Invalid credentials. Please try again.');
+    }
 });
 
 function logout() {
@@ -849,6 +859,16 @@ window.resetApp = function() {
     }
 };
 
+window.setTheme = function(theme) {
+    const body = document.body;
+    if (theme === 'default') {
+        body.removeAttribute('data-theme');
+    } else {
+        body.setAttribute('data-theme', theme);
+    }
+    localStorage.setItem('theme-preference', theme);
+};
+
 function renderSettings() {
     const settingsContainer = document.getElementById('view-settings');
 
@@ -968,6 +988,61 @@ function renderSettings() {
     `;
 }
 
+// Account Management Functions
+window.openAccountModal = function() {
+    const currentUsername = localStorage.getItem('ft_username') || 'admin@example.com';
+    document.getElementById('acc-username').value = currentUsername;
+    document.getElementById('acc-password').value = '';
+    document.getElementById('account-modal').classList.remove('hidden');
+};
+
+window.closeAccountModal = function() {
+    document.getElementById('account-modal').classList.add('hidden');
+};
+
+window.saveAccountChanges = function(e) {
+    e.preventDefault();
+    const newUsername = document.getElementById('acc-username').value;
+    const newPassword = document.getElementById('acc-password').value;
+    const avatarFile = document.getElementById('acc-avatar-upload').files[0];
+
+    localStorage.setItem('ft_username', newUsername);
+    if (newPassword) {
+        localStorage.setItem('ft_password', newPassword);
+    }
+
+    if (avatarFile) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            localStorage.setItem('ft_avatar', event.target.result);
+            updateUIWithUser(newUsername);
+            closeAccountModal();
+            alert('Account updated with new profile picture!');
+        };
+        reader.readAsDataURL(avatarFile);
+    } else {
+        updateUIWithUser(newUsername);
+        closeAccountModal();
+        alert('Account credentials updated successfully!');
+    }
+};
+
+function updateUIWithUser(username) {
+    const display = username.split('@')[0];
+    document.getElementById('header-username-display').innerText = display.charAt(0).toUpperCase() + display.slice(1);
+    
+    const avatarContainer = document.getElementById('header-avatar');
+    const savedAvatar = localStorage.getItem('ft_avatar');
+
+    if (savedAvatar) {
+        avatarContainer.innerHTML = `<img src="${savedAvatar}" class="w-full h-full rounded-full object-cover">`;
+        avatarContainer.classList.remove('bg-indigo-100', 'text-indigo-700');
+    } else {
+        avatarContainer.innerText = username.substring(0, 2).toUpperCase();
+        avatarContainer.classList.add('bg-indigo-100', 'text-indigo-700');
+    }
+}
+
 // Real-time Clock Logic
 function startClock() {
     const container = document.getElementById('realtime-clock');
@@ -998,6 +1073,13 @@ function startClock() {
 // Initialization Logic: Check if user was logged in and which view they were on
 function init() {
     startClock();
+    const savedTheme = localStorage.getItem('theme-preference') || 'default';
+    setTheme(savedTheme);
+
+    // Load current username info
+    const currentUsername = localStorage.getItem('ft_username') || 'admin@example.com';
+    updateUIWithUser(currentUsername);
+
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     if (isLoggedIn) {
         document.getElementById('login-view').classList.add('hidden');
