@@ -7,14 +7,56 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Theme System Overrides */
+        :root { --p: #4f46e5; --pl: #e0e7ff; --s: #0f172a; } /* Default */
+        [data-theme="teal"] { --p: #0d9488; --pl: #ccfbf1; --s: #134e4a; }
+        [data-theme="cream"] { --p: #b45309; --pl: #fff7ed; --s: #451a03; }
+        [data-theme="pink"] { --p: #db2777; --pl: #fdf2f8; --s: #500724; }
+
+        /* Primary Color Mapping */
+        [data-theme] .bg-indigo-600 { background-color: var(--p) !important; }
+        [data-theme] .text-indigo-600, [data-theme] .text-indigo-700 { color: var(--p) !important; }
+        [data-theme] .bg-slate-900 { background-color: var(--s) !important; }
+        [data-theme] .bg-indigo-100 { background-color: var(--pl) !important; }
+        [data-theme] .text-indigo-700 { color: var(--p) !important; }
+        [data-theme] .border-indigo-200, [data-theme] .focus\:ring-indigo-500:focus, [data-theme] .decoration-indigo-500 { border-color: var(--p) !important; text-decoration-color: var(--p) !important; }
+        [data-theme] .shadow-indigo-100 { --tw-shadow-color: var(--pl); }
+
+        /* Dark Mode Global Overrides */
+        [data-theme="dark"] { background-color: #0f172a !important; color: #f1f5f9 !important; --p: #818cf8; --pl: #312e81; --s: #020617; }
+        [data-theme="dark"] .bg-white { background-color: #1e293b !important; }
+        [data-theme="dark"] .bg-gray-50, [data-theme="dark"] body { background-color: #0f172a !important; }
+        [data-theme="dark"] .text-gray-800, [data-theme="dark"] .text-gray-900 { color: #f8fafc !important; }
+        [data-theme="dark"] .text-gray-400, [data-theme="dark"] .text-gray-500, [data-theme="dark"] .text-gray-600 { color: #94a3b8 !important; }
+        [data-theme="dark"] .border, [data-theme="dark"] .border-gray-100, [data-theme="dark"] .border-gray-200 { border-color: #334155 !important; }
+        [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea { 
+            background-color: #0f172a !important; 
+            color: white !important; 
+            border-color: #334155 !important; 
+        }
+        [data-theme="dark"] header { background-color: #1e293b !important; border-bottom-color: #334155 !important; }
+        [data-theme="dark"] .bg-slate-50, [data-theme="dark"] .bg-gray-50\/50 { background-color: #1e293b !important; }
+        [data-theme="dark"] .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.5); }
+        
+        /* Specific Card fixes for Dark Mode */
+        [data-theme="dark"] .bg-red-50 { background-color: #450a0a !important; color: #fecaca !important; }
+        [data-theme="dark"] .bg-orange-50 { background-color: #431407 !important; color: #fed7aa !important; }
+        [data-theme="dark"] .bg-green-50 { background-color: #052e16 !important; color: #bbf7d0 !important; }
+    </style>
 </head>
 <body class="bg-gray-50 font-sans antialiased">
 
+    <!-- Global Watermark -->
+    <div class="fixed inset-0 pointer-events-none flex items-center justify-center z-0 overflow-hidden opacity-[0.03] select-none">
+        <img src="logo.png" alt="Watermark" class="w-1/2 max-w-4xl transform -rotate-12">
+    </div>
+
     <!-- Login Screen -->
-    <div id="login-view" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-800">
-        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
+    <div id="login-view" class="relative z-10 min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-800">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md relative z-20">
             <div class="text-center mb-8">
-                <i class="fas fa-box-archive text-4xl text-indigo-600 mb-2"></i>
+                <img src="logo.png" alt="Logo" class="h-24 mx-auto mb-4 drop-shadow-md">
                 <h1 class="text-2xl font-bold text-gray-800">FreshTrack</h1>
                 <p class="text-gray-500">Manage your inventory efficiently</p>
             </div>
@@ -33,12 +75,13 @@
     </div>
 
     <!-- Main Application Layout (Hidden by default) -->
-    <div id="main-layout" class="hidden flex h-screen overflow-hidden">
+    <div id="main-layout" class="hidden flex h-screen overflow-hidden relative z-10">
         
         <!-- Sidebar -->
-        <aside class="w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col">
-            <div class="p-6 text-xl font-bold flex items-center gap-2 border-b border-slate-800">
-                <i class="fas fa-leaf text-green-400"></i> FreshTrack
+        <aside class="w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col relative z-20">
+            <div class="p-6 flex flex-col items-center gap-2 border-b border-slate-800 text-center">
+                <img src="logo.png" alt="Logo" class="h-14 w-auto brightness-110">
+                <span class="text-xl font-bold tracking-tight">FreshTrack</span>
             </div>
             <nav class="flex-1 p-4 space-y-2">
                 <a href="#" onclick="showView('dashboard')" class="nav-link active flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800 transition">
@@ -62,14 +105,40 @@
         </aside>
 
         <!-- Main Content Area -->
-        <div class="flex-1 flex flex-col overflow-hidden">
+        <div class="flex-1 flex flex-col overflow-hidden relative z-10">
             <!-- Top Navigation Bar -->
             <header class="h-16 bg-white border-b flex items-center justify-between px-8 shadow-sm">
                 <h2 id="view-title" class="text-xl font-bold text-gray-800">Dashboard</h2>
                 <div class="flex items-center gap-4">
                     <div id="realtime-clock" class="hidden md:flex items-center gap-4 bg-white border border-gray-100 px-4 py-2 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 cursor-default"></div>
-                    <span class="text-sm text-gray-500">Welcome, <span class="font-medium text-gray-800">Administrator</span></span>
-                    <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold border border-indigo-200">
+                    
+                    <!-- Theme Selector Toggle -->
+                    <div class="relative group">
+                        <button class="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center text-gray-500 hover:text-indigo-600 shadow-sm transition-all hover:shadow-md">
+                            <i class="fas fa-palette"></i>
+                        </button>
+                        <div class="hidden group-hover:block absolute right-0 mt-0 w-48 bg-white rounded-xl shadow-xl border border-gray-100 z-50 p-2 overflow-hidden">
+                            <p class="px-3 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50 mb-1">Select Theme</p>
+                            <button onclick="setTheme('default')" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition text-xs font-bold text-gray-700">
+                                <span class="w-4 h-4 rounded-full bg-indigo-600 shadow-sm"></span> Indigo
+                            </button>
+                            <button onclick="setTheme('teal')" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-teal-50 transition text-xs font-bold text-gray-700">
+                                <span class="w-4 h-4 rounded-full bg-teal-500 shadow-sm"></span> Pastel Teal
+                            </button>
+                            <button onclick="setTheme('cream')" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-orange-50 transition text-xs font-bold text-gray-700">
+                                <span class="w-4 h-4 rounded-full bg-orange-200 border border-orange-300 shadow-sm"></span> Cream Warm
+                            </button>
+                            <button onclick="setTheme('pink')" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-pink-50 transition text-xs font-bold text-gray-700">
+                                <span class="w-4 h-4 rounded-full bg-pink-400 shadow-sm"></span> Pink Rose
+                            </button>
+                            <button onclick="setTheme('dark')" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition text-xs font-bold text-gray-700 border-t border-gray-50 mt-1 pt-2">
+                                <span class="w-4 h-4 rounded-full bg-slate-900 shadow-sm"></span> Dark Mode
+                            </button>
+                        </div>
+                    </div>
+
+                    <span class="text-sm text-gray-500">Welcome, <span id="header-username-display" class="font-medium text-gray-800">Administrator</span></span>
+                    <div id="header-avatar" onclick="openAccountModal()" class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold border border-indigo-200 cursor-pointer hover:ring-2 hover:ring-indigo-500 transition-all">
                         AD
                     </div>
                 </div>
@@ -283,6 +352,41 @@
                 <div class="pt-4 flex gap-3">
                     <button type="button" onclick="closeAddModal()" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition">Cancel</button>
                     <button type="submit" class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition">Add Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Account Settings Modal -->
+    <div id="account-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h3 class="text-lg font-bold text-gray-800">Account Security</h3>
+                <button onclick="closeAccountModal()" class="text-gray-400 hover:text-gray-600 transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="account-form" onsubmit="saveAccountChanges(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Update Username (Email)</label>
+                    <input type="email" id="acc-username" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">New Password (Leave blank to keep current)</label>
+                    <input type="password" id="acc-password" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition" placeholder="••••••••">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Profile Picture</label>
+                    <input type="file" id="acc-avatar-upload" accept="image/*" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
+                </div>
+                <div class="p-3 bg-amber-50 rounded-lg border border-amber-100">
+                    <p class="text-[10px] text-amber-700 leading-tight">
+                        <i class="fas fa-exclamation-triangle mr-1"></i> Changing these credentials will require you to use the new details for your next login.
+                    </p>
+                </div>
+                <div class="pt-2 flex gap-3">
+                    <button type="button" onclick="closeAccountModal()" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition text-sm">Cancel</button>
+                    <button type="submit" class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition text-sm shadow-md shadow-indigo-100">Update Account</button>
                 </div>
             </form>
         </div>
