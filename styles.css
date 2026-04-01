@@ -6,3 +6,13 @@
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* Sidebar Collapsed State */
+.sidebar-collapsed {
+    width: 5rem !important; /* w-20 */
+}
+
+.sidebar-collapsed .sidebar-text-item {
+    opacity: 0;
+    display: none;
+}
