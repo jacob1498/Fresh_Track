@@ -10,6 +10,10 @@ const SAMPLE_ITEMS = [
 // Default System Credentials
 const DEFAULT_USER = 'admin@example.com';
 const DEFAULT_PASS = 'admin123';
+const INACTIVITY_LIMIT = 30 * 60 * 1000; // 30 minutes in milliseconds
+
+// Session State
+let inactivityTimer;
 
 // Mock Data
 let items = [];
@@ -40,6 +44,7 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
         localStorage.setItem('isLoggedIn', 'true');
         document.getElementById('login-view').classList.add('hidden');
         document.getElementById('main-layout').classList.remove('hidden');
+        startInactivityTimer();
         showView('dashboard');
     } else {
         alert('Invalid credentials. Please try again.');
@@ -47,6 +52,7 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
 });
 
 function logout() {
+    clearTimeout(inactivityTimer);
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('currentView');
     document.getElementById('login-view').classList.remove('hidden');
@@ -897,9 +903,7 @@ function renderSettings() {
                             <i class="fas fa-user-circle text-indigo-500"></i> User Profile
                         </h4>
                         <div class="flex items-center gap-6">
-                            <div class="w-20 h-20 rounded-2xl bg-indigo-600 flex items-center justify-center text-white text-3xl font-black shadow-lg shadow-indigo-100">
-                                AD
-                            </div>
+                            <div id="settings-avatar" class="w-20 h-20 rounded-2xl bg-indigo-600 flex items-center justify-center text-white text-3xl font-black shadow-lg shadow-indigo-100 overflow-hidden"></div>
                             <div class="flex-1 grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-[10px] font-black text-gray-400 uppercase mb-1">Full Name</label>
@@ -990,6 +994,10 @@ function renderSettings() {
             </div>
         </div>
     `;
+
+    // Sync the avatar UI after rendering the settings content
+    const currentUsername = localStorage.getItem('ft_username') || DEFAULT_USER;
+    updateUIWithUser(currentUsername);
 }
 
 // Account Management Functions
@@ -1035,18 +1043,52 @@ function updateUIWithUser(username) {
     const display = username.split('@')[0];
     document.getElementById('header-username-display').innerText = display.charAt(0).toUpperCase() + display.slice(1);
     
-    const avatarContainer = document.getElementById('header-avatar');
     const savedAvatar = localStorage.getItem('ft_avatar');
 
-    if (savedAvatar) {
-        avatarContainer.innerHTML = `<img src="${savedAvatar}" class="w-full h-full rounded-full object-cover">`;
-        avatarContainer.classList.remove('bg-slate-800', 'text-green-400', 'border-slate-700');
-    } else {
-        // Restore the 1st logo (Leaf) as the default brand identity in the avatar
-        avatarContainer.innerHTML = `<i class="fas fa-leaf text-sm"></i>`;
-        avatarContainer.classList.add('bg-slate-800', 'text-green-400', 'border-slate-700');
+    // Update Header Avatar
+    const headerAvatar = document.getElementById('header-avatar');
+    if (headerAvatar) {
+        if (savedAvatar) {
+            headerAvatar.innerHTML = `<img src="${savedAvatar}" class="w-full h-full rounded-full object-cover">`;
+            headerAvatar.classList.remove('bg-slate-800', 'text-green-400', 'border-slate-700', 'shadow-inner');
+            headerAvatar.classList.add('p-1', 'bg-white'); // Add padding and white background for image
+        } else {
+            headerAvatar.innerHTML = `<i class="fas fa-leaf text-sm"></i>`;
+            headerAvatar.classList.add('bg-slate-800', 'text-green-400', 'border-slate-700', 'shadow-inner');
+            headerAvatar.classList.remove('p-1', 'bg-white');
+        }
+    }
+
+    // Update Settings Avatar
+    const settingsAvatar = document.getElementById('settings-avatar');
+    if (settingsAvatar) {
+        if (savedAvatar) {
+            settingsAvatar.innerHTML = `<img src="${savedAvatar}" class="w-full h-full rounded-full object-cover">`;
+            settingsAvatar.classList.remove('bg-indigo-600', 'text-white', 'text-3xl', 'font-black', 'shadow-lg', 'shadow-indigo-100');
+            settingsAvatar.classList.add('p-1', 'bg-white'); // Add padding and white background for image
+        } else {
+            // Restore the leaf icon for the settings profile
+            settingsAvatar.innerHTML = `<i class="fas fa-leaf text-3xl"></i>`; 
+            settingsAvatar.classList.add('bg-indigo-600', 'text-white', 'text-3xl', 'font-black', 'shadow-lg', 'shadow-indigo-100');
+            settingsAvatar.classList.remove('p-1', 'bg-white');
+        }
     }
 }
+
+// Session Management
+function startInactivityTimer() {
+    clearTimeout(inactivityTimer);
+    if (localStorage.getItem('isLoggedIn') !== 'true') return;
+
+    inactivityTimer = setTimeout(() => {
+        alert('Session expired due to 30 minutes of inactivity. Please log in again.');
+        logout();
+    }, INACTIVITY_LIMIT);
+}
+
+window.resetInactivityTimer = function() {
+    startInactivityTimer();
+};
 
 // Sidebar Management
 window.toggleSidebar = function() {
@@ -1093,6 +1135,12 @@ function init() {
     const currentUsername = localStorage.getItem('ft_username') || 'admin@example.com';
     updateUIWithUser(currentUsername);
 
+    // Setup Activity Listeners
+    const activityEvents = ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'];
+    activityEvents.forEach(event => {
+        window.addEventListener(event, resetInactivityTimer);
+    });
+
     // Restore sidebar state
     const isSidebarCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
     if (isSidebarCollapsed) {
@@ -1101,6 +1149,7 @@ function init() {
 
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     if (isLoggedIn) {
+        startInactivityTimer();
         document.getElementById('login-view').classList.add('hidden');
         document.getElementById('main-layout').classList.remove('hidden');
         const savedView = localStorage.getItem('currentView') || 'dashboard';
