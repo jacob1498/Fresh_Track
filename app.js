@@ -12,8 +12,16 @@ const DEFAULT_USER = 'admin@example.com';
 const DEFAULT_PASS = 'admin123';
 const INACTIVITY_LIMIT = 30 * 60 * 1000; // 30 minutes in milliseconds
 
+// Cloud Sync Configuration (Replace with your actual Supabase project details)
+const SUPABASE_URL = 'https://mroinbosnhkimutkrnqs.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb2luYm9zbmhraW11dGtybnFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNjU5MzYsImV4cCI6MjA5MDY0MTkzNn0.eDhVYEQGLg-Hq66VbggB4AAY7nPX6k5dVbNhEv6PLzY';
+
+const supabase = (typeof supabase !== 'undefined') ? 
+    supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
 // Session State
 let inactivityTimer;
+let autoSyncTimer;
 
 // Mock Data
 let items = [];
@@ -49,9 +57,58 @@ function calculateStatus(expiryDateStr) {
     return today >= expiringThreshold ? 'Expiring' : 'Active';
 }
 
+// Cloud Data Fetching Logic
+async function fetchCloudData(silent = false) {
+    if (!supabase) return;
+    if (!silent) showLoading("Syncing with Cloud...");
+    
+    try {
+        const { data, error } = await supabase.from('inventory').select('*');
+        if (!error && data) {
+            items = data;
+            localStorage.setItem('ft_inventory_data', JSON.stringify(items));
+            
+            // Refresh statuses based on current time and re-render current view
+            refreshItemStatuses();
+            const currentView = localStorage.getItem('currentView') || 'dashboard';
+            if (currentView === 'dashboard') renderDashboard();
+            else if (currentView === 'list') renderList();
+            else if (currentView === 'reports') renderReports();
+            else if (currentView === 'settings') renderSettings();
+        }
+    } catch (e) {
+        console.error("Cloud Fetch Error:", e);
+    } finally {
+        if (!silent) hideLoading();
+    }
+}
+
+function startAutoSync() {
+    stopAutoSync();
+    const isEnabled = localStorage.getItem('autoRefreshEnabled') !== 'false'; // Default true
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    if (isEnabled && isLoggedIn) {
+        autoSyncTimer = setInterval(() => fetchCloudData(true), 60000); // Sync every 60 seconds
+    }
+}
+
+function stopAutoSync() {
+    if (autoSyncTimer) clearInterval(autoSyncTimer);
+}
+
 // Persistent Storage Logic
-function saveItems() {
+async function saveItems() {
+    // 1. Always persist locally first for offline safety
     localStorage.setItem('ft_inventory_data', JSON.stringify(items));
+
+    // 2. Sync to Cloud if Supabase is initialized
+    if (supabase) {
+        const { error } = await supabase
+            .from('inventory')
+            .upsert(items, { onConflict: 'id' });
+        
+        if (error) console.error("Cloud Sync Error:", error.message);
+    }
 }
 
 // Centralized logic to ensure all item statuses are up-to-date based on current date
@@ -77,6 +134,7 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
         document.getElementById('login-view').classList.add('hidden');
         document.getElementById('main-layout').classList.remove('hidden');
         startInactivityTimer();
+        startAutoSync();
         showView('dashboard');
     } else {
         alert('Invalid credentials. Please try again.');
@@ -85,6 +143,7 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
 
 function logout() {
     clearTimeout(inactivityTimer);
+    stopAutoSync();
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('currentView');
     document.getElementById('login-view').classList.remove('hidden');
@@ -531,9 +590,19 @@ window.toggleSelectItem = function(id) {
 
 window.bulkDelete = function() {
     if (confirm(`Are you sure you want to delete ${selectedItemIds.size} selected items?`)) {
+        const idsToDelete = Array.from(selectedItemIds);
+        
         items = items.filter(item => !selectedItemIds.has(item.id));
         selectedItemIds.clear();
         saveItems();
+
+        // Explicitly remove from Cloud
+        if (supabase) {
+            supabase.from('inventory').delete().in('id', idsToDelete).then(({error}) => {
+                if (error) console.error("Cloud Delete Error:", error.message);
+            });
+        }
+
         renderList();
     }
 };
@@ -701,6 +770,14 @@ window.deleteItem = function(id) {
         items = items.filter(item => item.id !== id);
         selectedItemIds.delete(id);
         saveItems();
+
+        // Explicitly remove from Cloud
+        if (supabase) {
+            supabase.from('inventory').delete().eq('id', id).then(({error}) => {
+                if (error) console.error("Cloud Delete Error:", error.message);
+            });
+        }
+
         renderList();
     }
 };
@@ -956,6 +1033,12 @@ window.setTheme = function(theme) {
     localStorage.setItem('theme-preference', theme);
 };
 
+window.toggleAutoRefresh = function(enabled) {
+    localStorage.setItem('autoRefreshEnabled', enabled);
+    if (enabled) startAutoSync();
+    else stopAutoSync();
+};
+
 function renderSettings() {
     const settingsContainer = document.getElementById('view-settings');
 
@@ -1010,7 +1093,9 @@ function renderSettings() {
                                     <p class="text-xs text-gray-500">Refresh statistics every 60 seconds automatically.</p>
                                 </div>
                                 <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" checked class="sr-only peer">
+                                    <input type="checkbox" id="pref-auto-refresh" onchange="toggleAutoRefresh(this.checked)" 
+                                        ${localStorage.getItem('autoRefreshEnabled') !== 'false' ? 'checked' : ''} 
+                                        class="sr-only peer">
                                     <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                                 </label>
                             </div>
@@ -1228,20 +1313,10 @@ function init() {
     const currentUsername = localStorage.getItem('ft_username') || 'admin@example.com';
     updateUIWithUser(currentUsername);
 
-    // Load persisted inventory data
-    try {
-        const savedData = localStorage.getItem('ft_inventory_data');
-        if (savedData && savedData !== "[]") {
-            items = JSON.parse(savedData);
-        } else {
-            // If no data exists (first time on GitHub), load samples
-            items = [...SAMPLE_ITEMS];
-            saveItems();
-        }
-    } catch (e) {
-        console.error("Failed to load inventory data:", e);
-        items = [...SAMPLE_ITEMS];
-    }
+    // Load inventory data and start background sync
+    fetchCloudData().then(() => {
+        startAutoSync();
+    });
 
     // Setup Activity Listeners
     const activityEvents = ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'];
@@ -1258,6 +1333,7 @@ function init() {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     if (isLoggedIn) {
         startInactivityTimer();
+        startAutoSync();
         document.getElementById('login-view').classList.add('hidden');
         document.getElementById('main-layout').classList.remove('hidden');
         const savedView = localStorage.getItem('currentView') || 'dashboard';
