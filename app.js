@@ -60,6 +60,7 @@ function refreshItemStatuses() {
         ...item,
         status: calculateStatus(item.expiryDate)
     }));
+    saveItems();
 }
 
 // Authentication Logic
@@ -1228,9 +1229,18 @@ function init() {
     updateUIWithUser(currentUsername);
 
     // Load persisted inventory data
-    const savedData = localStorage.getItem('ft_inventory_data');
-    if (savedData) {
-        items = JSON.parse(savedData);
+    try {
+        const savedData = localStorage.getItem('ft_inventory_data');
+        if (savedData && savedData !== "[]") {
+            items = JSON.parse(savedData);
+        } else {
+            // If no data exists (first time on GitHub), load samples
+            items = [...SAMPLE_ITEMS];
+            saveItems();
+        }
+    } catch (e) {
+        console.error("Failed to load inventory data:", e);
+        items = [...SAMPLE_ITEMS];
     }
 
     // Setup Activity Listeners
