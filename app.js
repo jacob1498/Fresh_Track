@@ -49,6 +49,11 @@ function calculateStatus(expiryDateStr) {
     return today >= expiringThreshold ? 'Expiring' : 'Active';
 }
 
+// Persistent Storage Logic
+function saveItems() {
+    localStorage.setItem('ft_inventory_data', JSON.stringify(items));
+}
+
 // Centralized logic to ensure all item statuses are up-to-date based on current date
 function refreshItemStatuses() {
     items = items.map(item => ({
@@ -527,6 +532,7 @@ window.bulkDelete = function() {
     if (confirm(`Are you sure you want to delete ${selectedItemIds.size} selected items?`)) {
         items = items.filter(item => !selectedItemIds.has(item.id));
         selectedItemIds.clear();
+        saveItems();
         renderList();
     }
 };
@@ -558,6 +564,7 @@ window.saveAdd = function(e) {
     };
 
     items.push(newItem);
+    saveItems();
     closeAddModal();
     renderList();
 };
@@ -622,6 +629,7 @@ window.submitAdjustment = function(type) {
         return i;
     });
 
+    saveItems();
     closeQtyCalc();
     renderList();
 };
@@ -671,6 +679,7 @@ window.saveEdit = function(e) {
         return item;
     });
 
+    saveItems();
     closeEditModal();
     renderList();
 };
@@ -690,6 +699,7 @@ window.deleteItem = function(id) {
     if (confirm('Are you sure you want to delete this item?')) {
         items = items.filter(item => item.id !== id);
         selectedItemIds.delete(id);
+        saveItems();
         renderList();
     }
 };
@@ -759,6 +769,7 @@ function handleUpload(event) {
 
             if (newItems.length > 0) {
                 items = [...items, ...newItems];
+                saveItems();
                 renderList();
                 alert(`Successfully imported ${newItems.length} items.`);
             } else if (errors.length > 0) {
@@ -928,6 +939,7 @@ function renderReports() {
 window.resetApp = function() {
     if (confirm("WARNING: This will delete all current inventory items and reset the app to its original factory defaults. Continue?")) {
         items = [...SAMPLE_ITEMS]; // Restore sample data from the constant
+        saveItems();
         renderSettings();
         alert("App has been reset to factory defaults.");
     }
@@ -1214,6 +1226,12 @@ function init() {
     // Load current username info
     const currentUsername = localStorage.getItem('ft_username') || 'admin@example.com';
     updateUIWithUser(currentUsername);
+
+    // Load persisted inventory data
+    const savedData = localStorage.getItem('ft_inventory_data');
+    if (savedData) {
+        items = JSON.parse(savedData);
+    }
 
     // Setup Activity Listeners
     const activityEvents = ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'];
