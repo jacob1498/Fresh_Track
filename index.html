@@ -47,6 +47,15 @@
 </head>
 <body class="bg-gray-50 font-sans antialiased">
 
+    <!-- Global Loading Overlay -->
+    <div id="loading-overlay" class="hidden fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex flex-col items-center justify-center">
+        <div class="relative">
+            <div class="w-20 h-20 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+            <i class="fas fa-leaf text-green-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl"></i>
+        </div>
+        <p id="loading-text" class="mt-6 text-white font-black uppercase tracking-[0.2em] text-[10px] animate-pulse">Processing Data</p>
+    </div>
+
     <!-- Global Watermark -->
     <div class="fixed inset-0 pointer-events-none flex items-center justify-center z-0 overflow-hidden opacity-[0.03] select-none">
         <img src="logo.png" alt="Watermark" class="w-1/2 max-w-4xl transform -rotate-12">
@@ -224,14 +233,6 @@
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Category</label>
                     <input type="text" id="edit-category" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition" placeholder="e.g. Dairy">
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Status</label>
-                    <select id="edit-status" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition bg-white">
-                        <option value="Active">Active</option>
-                        <option value="Expiring">Expiring</option>
-                        <option value="Expired">Expired</option>
-                    </select>
-                </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Return Type</label>
@@ -334,14 +335,6 @@
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Category</label>
                         <input type="text" id="add-category" required class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition" placeholder="e.g. Dairy">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Status</label>
-                        <select id="add-status" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition bg-white">
-                            <option value="Active">Active</option>
-                            <option value="Expiring">Expiring</option>
-                            <option value="Expired">Expired</option>
-                        </select>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
