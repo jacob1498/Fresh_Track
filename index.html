@@ -56,7 +56,7 @@
     <div id="login-view" class="relative z-10 min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-800">
         <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md relative z-20">
             <div class="text-center mb-8">
-                <img src="logo.png" alt="Logo" class="h-24 mx-auto mb-4 drop-shadow-md">
+                <i class="fas fa-leaf text-green-500 text-6xl mb-4 drop-shadow-sm"></i>
                 <h1 class="text-2xl font-bold text-gray-800">FreshTrack</h1>
                 <p class="text-gray-500">Manage your inventory efficiently</p>
             </div>
@@ -78,28 +78,33 @@
     <div id="main-layout" class="hidden flex h-screen overflow-hidden relative z-10">
         
         <!-- Sidebar -->
-        <aside class="w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col relative z-20">
-            <div class="p-6 flex items-center gap-3 border-b border-slate-800">
-                <i class="fas fa-leaf text-green-400 text-2xl"></i>
-                <span class="text-xl font-bold tracking-tight whitespace-nowrap">FreshTrack</span>
+        <aside id="main-sidebar" class="w-64 bg-slate-900 text-white flex-shrink-0 flex flex-col relative z-20 transition-all duration-300 ease-in-out">
+            <div class="p-6 flex items-center justify-between border-b border-slate-800">
+                <div class="flex items-center gap-3 overflow-hidden">
+                    <i class="fas fa-leaf text-green-400 text-2xl flex-shrink-0"></i>
+                    <span id="sidebar-logo-text" class="text-xl font-bold tracking-tight whitespace-nowrap sidebar-text-item transition-opacity duration-300">FreshTrack</span>
+                </div>
+                <button onclick="toggleSidebar()" class="text-slate-400 hover:text-white transition-colors p-1">
+                    <i class="fas fa-bars"></i>
+                </button>
             </div>
             <nav class="flex-1 p-4 space-y-2">
-                <a href="#" onclick="showView('dashboard')" class="nav-link active flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800 transition">
-                    <i class="fas fa-chart-line w-5"></i> Dashboard
+                <a href="#" onclick="showView('dashboard')" class="nav-link active flex items-center p-3 rounded-lg hover:bg-slate-800 transition" title="Dashboard">
+                    <i class="fas fa-chart-line w-5 flex-shrink-0 text-center"></i> <span class="sidebar-text-item ml-3 whitespace-nowrap">Dashboard</span>
                 </a>
-                <a href="#" onclick="showView('list')" class="nav-link flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800 transition">
-                    <i class="fas fa-list w-5"></i> Item List
+                <a href="#" onclick="showView('list')" class="nav-link flex items-center p-3 rounded-lg hover:bg-slate-800 transition" title="Item List">
+                    <i class="fas fa-list w-5 flex-shrink-0 text-center"></i> <span class="sidebar-text-item ml-3 whitespace-nowrap">Item List</span>
                 </a>
-                <a href="#" onclick="showView('reports')" class="nav-link flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800 transition">
-                    <i class="fas fa-file-contract w-5"></i> Reports
+                <a href="#" onclick="showView('reports')" class="nav-link flex items-center p-3 rounded-lg hover:bg-slate-800 transition" title="Reports">
+                    <i class="fas fa-file-contract w-5 flex-shrink-0 text-center"></i> <span class="sidebar-text-item ml-3 whitespace-nowrap">Reports</span>
                 </a>
-                <a href="#" onclick="showView('settings')" class="nav-link flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800 transition">
-                    <i class="fas fa-cog w-5"></i> Settings
+                <a href="#" onclick="showView('settings')" class="nav-link flex items-center p-3 rounded-lg hover:bg-slate-800 transition" title="Settings">
+                    <i class="fas fa-cog w-5 flex-shrink-0 text-center"></i> <span class="sidebar-text-item ml-3 whitespace-nowrap">Settings</span>
                 </a>
             </nav>
             <div class="p-4 border-t border-slate-800">
-                <button onclick="logout()" class="flex items-center gap-3 p-3 w-full text-left text-red-400 hover:bg-slate-800 rounded-lg transition">
-                    <i class="fas fa-sign-out-alt w-5"></i> Logout
+                <button onclick="logout()" class="flex items-center p-3 w-full text-left text-red-400 hover:bg-slate-800 rounded-lg transition" title="Logout">
+                    <i class="fas fa-sign-out-alt w-5 flex-shrink-0 text-center"></i> <span class="sidebar-text-item ml-3 whitespace-nowrap">Logout</span>
                 </button>
             </div>
         </aside>
