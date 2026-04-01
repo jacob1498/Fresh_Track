@@ -13,8 +13,8 @@ const DEFAULT_PASS = 'admin123';
 const INACTIVITY_LIMIT = 30 * 60 * 1000; // 30 minutes in milliseconds
 
 // Cloud Sync Configuration (Replace with your actual Supabase project details)
-const SUPABASE_URL = https://mroinbosnhkimutkrnqs.supabase.co;
-const SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb2luYm9zbmhraW11dGtybnFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNjU5MzYsImV4cCI6MjA5MDY0MTkzNn0.eDhVYEQGLg-Hq66VbggB4AAY7nPX6k5dVbNhEv6PLzY;
+const SUPABASE_URL = 'https://mroinbosnhkimutkrnqs.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb2luYm9zbmhraW11dGtybnFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNjU5MzYsImV4cCI6MjA5MDY0MTkzNn0.eDhVYEQGLg-Hq66VbggB4AAY7nPX6k5dVbNhEv6PLzY';
 
 const supabase = (typeof supabase !== 'undefined') ? 
     supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
