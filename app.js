@@ -33,6 +33,30 @@ let rowsPerPage = 25;
 let calcActiveItemId = null;
 let calcInputValue = '0';
 
+// Automated Status Logic
+function calculateStatus(expiryDateStr) {
+    if (!expiryDateStr) return 'Active';
+    const expiryDate = new Date(expiryDateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (today >= expiryDate) return 'Expired';
+
+    // Expiring status: 8 months before expiry
+    const expiringThreshold = new Date(expiryDate);
+    expiringThreshold.setMonth(expiringThreshold.getMonth() - 8);
+
+    return today >= expiringThreshold ? 'Expiring' : 'Active';
+}
+
+// Centralized logic to ensure all item statuses are up-to-date based on current date
+function refreshItemStatuses() {
+    items = items.map(item => ({
+        ...item,
+        status: calculateStatus(item.expiryDate)
+    }));
+}
+
 // Authentication Logic
 document.getElementById('login-form').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -63,6 +87,9 @@ function logout() {
 
 // Navigation Logic
 function showView(viewId) {
+    // Recalculate all statuses whenever switching views to ensure date-based accuracy
+    refreshItemStatuses();
+
     // Update UI headers
     document.getElementById('view-title').innerText = viewId.charAt(0).toUpperCase() + viewId.slice(1);
     
@@ -199,6 +226,9 @@ function renderDashboard() {
 
 // Centralized logic for processing items for the list view
 function getProcessedItems() {
+    // Ensure statuses are synced before filtering/sorting
+    refreshItemStatuses();
+
     const filtered = items.filter(i => {
         const matchesSearch = i.itemCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
                              i.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -245,17 +275,9 @@ function renderList() {
             <h3 class="text-xl font-black text-gray-900">Inventory Management</h3>
             <div class="flex flex-1 w-full md:w-auto gap-3">
                 ${selectedItemIds.size > 0 ? `
-                    <div class="flex gap-2">
-                        <select onchange="bulkUpdateStatus(this.value)" class="bg-indigo-50 border border-indigo-200 text-indigo-700 px-3 py-2 rounded-lg text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500 transition cursor-pointer">
-                            <option value="" disabled selected>Update Status (${selectedItemIds.size})</option>
-                            <option value="Active">Mark as Active</option>
-                            <option value="Expiring">Mark as Expiring</option>
-                            <option value="Expired">Mark as Expired</option>
-                        </select>
-                        <button onclick="bulkDelete()" class="bg-red-50 border border-red-200 text-red-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-100 transition whitespace-nowrap" title="Delete Selected">
-                            <i class="fas fa-trash-alt mr-1"></i> Delete
-                        </button>
-                    </div>
+                    <button onclick="bulkDelete()" class="bg-red-50 border border-red-200 text-red-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-100 transition whitespace-nowrap" title="Delete Selected">
+                        <i class="fas fa-trash-alt mr-1"></i> Delete (${selectedItemIds.size})
+                    </button>
                 ` : ''}
                 <div class="relative flex-1 md:w-64">
                     <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
@@ -509,20 +531,6 @@ window.bulkDelete = function() {
     }
 };
 
-window.bulkUpdateStatus = function(newStatus) {
-    if (!newStatus) return;
-    if (confirm(`Update status to "${newStatus}" for ${selectedItemIds.size} selected items?`)) {
-        items = items.map(item => {
-            if (selectedItemIds.has(item.id)) {
-                return { ...item, status: newStatus };
-            }
-            return item;
-        });
-        selectedItemIds.clear();
-        renderList();
-    }
-};
-
 window.openAddModal = function() {
     document.getElementById('add-form').reset();
     document.getElementById('add-modal').classList.remove('hidden');
@@ -534,6 +542,7 @@ window.closeAddModal = function() {
 
 window.saveAdd = function(e) {
     e.preventDefault();
+    const expiryDate = document.getElementById('add-expiryDate').value;
     const newItem = {
         id: Date.now() + Math.random(),
         location: document.getElementById('add-location').value,
@@ -541,7 +550,7 @@ window.saveAdd = function(e) {
         description: document.getElementById('add-description').value,
         qty: parseInt(document.getElementById('add-qty').value),
         expiryDate: document.getElementById('add-expiryDate').value,
-        status: document.getElementById('add-status').value,
+        status: calculateStatus(expiryDate),
         category: document.getElementById('add-category').value,
         returnType: document.getElementById('add-returnType').value,
         supplierName: document.getElementById('add-supplierName').value,
@@ -627,7 +636,6 @@ window.openEditModal = function(id) {
     document.getElementById('edit-description').value = item.description;
     document.getElementById('edit-qty').value = item.qty;
     document.getElementById('edit-expiryDate').value = item.expiryDate;
-    document.getElementById('edit-status').value = item.status;
     document.getElementById('edit-category').value = item.category || '';
     document.getElementById('edit-returnType').value = item.returnType || '';
     document.getElementById('edit-supplierName').value = item.supplierName || '';
@@ -642,6 +650,7 @@ window.closeEditModal = function() {
 window.saveEdit = function(e) {
     e.preventDefault();
     const id = parseFloat(document.getElementById('edit-id').value);
+    const expiryDate = document.getElementById('edit-expiryDate').value;
     
     items = items.map(item => {
         if (item.id === id) {
@@ -652,7 +661,7 @@ window.saveEdit = function(e) {
                 description: document.getElementById('edit-description').value,
                 qty: parseInt(document.getElementById('edit-qty').value),
                 expiryDate: document.getElementById('edit-expiryDate').value,
-                status: document.getElementById('edit-status').value,
+                status: calculateStatus(expiryDate),
                 category: document.getElementById('edit-category').value,
                 returnType: document.getElementById('edit-returnType').value,
                 supplierName: document.getElementById('edit-supplierName').value,
@@ -695,6 +704,8 @@ function handleUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
 
+    showLoading("Importing Inventory Data...");
+
     const reader = new FileReader();
     reader.onload = (e) => {
         try {
@@ -709,7 +720,7 @@ function handleUpload(event) {
 
             lines.slice(1).forEach((line, index) => {
                 const v = line.split(',');
-                if (v.length < 10) {
+                if (v.length < 9) {
                     errors.push(`Line ${index + 2}: Incorrect number of columns.`);
                     return;
                 }
@@ -734,11 +745,11 @@ function handleUpload(event) {
                     description: v[2]?.trim() || 'N/A',
                     qty: qty,
                     expiryDate: expiryDate,
-                    status: v[5]?.trim() || 'Active',
-                    history: v[6]?.trim() || 'Imported',
-                    category: v[7]?.trim() || 'General',
-                    returnType: v[8]?.trim() || '',
-                    supplierName: v[9]?.trim() || ''
+                    status: calculateStatus(expiryDate),
+                    history: v[5]?.trim() || 'Imported',
+                    category: v[6]?.trim() || 'General',
+                    returnType: v[7]?.trim() || '',
+                    supplierName: v[8]?.trim() || ''
                 });
             });
 
@@ -756,25 +767,34 @@ function handleUpload(event) {
         } catch (error) {
             alert("CSV Upload Error: " + error.message);
         } finally {
+            hideLoading();
             event.target.value = '';
         }
     };
-    reader.onerror = () => alert("Failed to read file.");
+    reader.onerror = () => { hideLoading(); alert("Failed to read file."); };
     reader.readAsText(file);
 }
 
 window.downloadSampleCSV = function() {
-    const csvContent = "Location,ItemCode,Description,Qty,ExpiryDate,Status,History,Category,ReturnType,SupplierName\n" +
-                       "Warehouse B,BF-101,Beef Steak 500g,10,2023-11-20,Active,Initial Stock,Meat,Non-Returnable,MeatMaster\n" +
-                       "Shelf C,JU-202,Orange Juice 2L,15,2023-10-25,Expiring,Restocked,Beverages,Returnable,AgriTrade\n" +
-                       "Fridge 03,CH-303,Cheddar Cheese,8,2023-09-15,Expired,Manual Entry,Dairy,Non-Returnable,Global Foods";
+    showLoading("Preparing Sample File...");
     
+    setTimeout(() => {
+    const headers = "Location,ItemCode,Description,Qty,ExpiryDate,History,Category,ReturnType,SupplierName";
+    const rows = [
+        "Warehouse A,MK-001,Fresh Milk 1L,12,2025-12-01,Initial Stock,Dairy,Non-Returnable,Dairy Farms Ltd",
+        "Fridge 02,EG-122,Organic Eggs 12pk,24,2025-01-15,Restocked,Dairy,Returnable,AgriCorp",
+        "Bakery Shelf,BR-990,Whole Wheat Bread,5,2023-12-01,Initial Stock,Bakery,Non-Returnable,SunBake Co"
+    ];
+    
+    const csvContent = headers + "\n" + rows.join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.setAttribute('href', url);
     a.setAttribute('download', 'sample_inventory.csv');
     a.click();
+        hideLoading();
+    }, 800);
 };
 
 window.exportToCSV = function() {
@@ -783,18 +803,20 @@ window.exportToCSV = function() {
         return;
     }
 
-    const headers = ["Location", "Item Code", "Description", "Category", "Quantity", "Expiry Date", "Status", "Supplier", "Return Type", "History"];
+    showLoading("Generating Export Report...");
+
+    setTimeout(() => {
+    const headers = ["Location", "ItemCode", "Description", "Qty", "ExpiryDate", "History", "Category", "ReturnType", "SupplierName"];
     const rows = items.map(i => [
         i.location, 
         i.itemCode, 
         i.description, 
-        i.category || 'N/A', 
         i.qty, 
         i.expiryDate, 
-        i.status, 
-        i.supplierName || 'N/A', 
+        i.history,
+        i.category || 'N/A', 
         i.returnType || 'N/A', 
-        i.history
+        i.supplierName || 'N/A'
     ].map(field => `"${String(field).replace(/"/g, '""')}"`).join(','));
     
     const csvContent = headers.join(',') + '\n' + rows.join('\n');
@@ -807,6 +829,22 @@ window.exportToCSV = function() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+        hideLoading();
+    }, 1000);
+};
+
+window.showLoading = function(text = "Processing Data") {
+    const overlay = document.getElementById('loading-overlay');
+    const textEl = document.getElementById('loading-text');
+    if (overlay && textEl) {
+        textEl.innerText = text;
+        overlay.classList.remove('hidden');
+    }
+};
+
+window.hideLoading = function() {
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) overlay.classList.add('hidden');
 };
 
 function renderReports() {
