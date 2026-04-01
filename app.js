@@ -21,6 +21,8 @@ let items = [];
 // Global Search and Filter State
 let searchTerm = '';
 let statusFilter = 'All';
+let startDateFilter = '';
+let endDateFilter = '';
 let sortColumn = 'expiryDate';
 let sortDirection = 'asc';
 let selectedItemIds = new Set();
@@ -202,7 +204,9 @@ function getProcessedItems() {
                              i.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                              (i.category && i.category.toLowerCase().includes(searchTerm.toLowerCase()));
         const matchesStatus = statusFilter === 'All' || i.status === statusFilter;
-        return matchesSearch && matchesStatus;
+        const matchesDate = (!startDateFilter || i.expiryDate >= startDateFilter) && 
+                           (!endDateFilter || i.expiryDate <= endDateFilter);
+        return matchesSearch && matchesStatus && matchesDate;
     });
 
     return filtered.sort((a, b) => {
@@ -266,6 +270,17 @@ function renderList() {
                     <option value="Expiring" ${statusFilter === 'Expiring' ? 'selected' : ''}>Expiring</option>
                     <option value="Expired" ${statusFilter === 'Expired' ? 'selected' : ''}>Expired</option>
                 </select>
+                <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-2 shadow-sm">
+                    <i class="fas fa-calendar-alt text-gray-400 text-xs ml-1"></i>
+                    <input type="date" value="${startDateFilter}" onchange="handleDateFilter('start', this.value)" class="bg-transparent text-xs text-gray-600 outline-none py-2 cursor-pointer w-28" title="Start Expiry Date">
+                    <span class="text-gray-300 text-[10px] font-bold">TO</span>
+                    <input type="date" value="${endDateFilter}" onchange="handleDateFilter('end', this.value)" class="bg-transparent text-xs text-gray-600 outline-none py-2 cursor-pointer w-28" title="End Expiry Date">
+                    ${(startDateFilter || endDateFilter) ? `
+                        <button onclick="handleDateFilter('clear')" class="text-gray-400 hover:text-red-500 transition-colors ml-1 px-1" title="Clear Date Filter">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    ` : ''}
+                </div>
                 <div class="flex gap-2">
                     <input type="file" id="csv-upload" class="hidden" accept=".csv" onchange="handleUpload(event)">
                     <button onclick="document.getElementById('csv-upload').click()" class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50 transition flex items-center gap-2">
@@ -446,6 +461,17 @@ window.changePage = function(page) {
 
 window.handleRowsPerPage = function(val) {
     rowsPerPage = parseInt(val);
+    currentPage = 1;
+    renderList();
+};
+
+window.handleDateFilter = function(type, val) {
+    if (type === 'start') startDateFilter = val;
+    if (type === 'end') endDateFilter = val;
+    if (type === 'clear') {
+        startDateFilter = '';
+        endDateFilter = '';
+    }
     currentPage = 1;
     renderList();
 };
@@ -952,6 +978,22 @@ function renderSettings() {
                 </div>
 
                 <div class="space-y-6">
+                    <!-- About Us Card -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <h4 class="text-sm font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <i class="fas fa-info-circle text-indigo-500"></i> About Us
+                        </h4>
+                        <div class="space-y-3">
+                            <p class="text-xs text-gray-600 leading-relaxed">
+                                FreshTrack is an intelligent inventory monitoring system developed to ensure product freshness and operational efficiency.
+                            </p>
+                            <div class="pt-3 border-t border-gray-50">
+                                <p class="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1">Developer Credit</p>
+                                <p class="text-sm font-bold text-gray-800">Initiative by Jaime Hutalla</p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                         <h4 class="text-sm font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
                             <i class="fas fa-database text-indigo-500"></i> System Data
