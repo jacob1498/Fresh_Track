@@ -7,6 +7,10 @@ const SAMPLE_ITEMS = [
     { id: 5, location: 'Freezer 01', itemCode: 'CH-221', description: 'Chicken Breast 500g', qty: 15, expiryDate: '2023-10-20', status: 'Expiring', history: 'Manual Update', category: 'Meat', returnType: 'Non-Returnable', supplierName: 'MeatMaster' }
 ];
 
+// Default System Credentials
+const DEFAULT_USER = 'admin@example.com';
+const DEFAULT_PASS = 'admin123';
+
 // Mock Data
 let items = [];
 
@@ -29,8 +33,8 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
     const emailInput = e.target.querySelector('input[type="email"]').value;
     const passwordInput = e.target.querySelector('input[type="password"]').value;
     
-    const storedUser = localStorage.getItem('ft_username') || 'admin@example.com';
-    const storedPass = localStorage.getItem('ft_password') || 'admin123';
+    const storedUser = localStorage.getItem('ft_username') || DEFAULT_USER;
+    const storedPass = localStorage.getItem('ft_password') || DEFAULT_PASS;
 
     if (emailInput === storedUser && passwordInput === storedPass) {
         localStorage.setItem('isLoggedIn', 'true');
