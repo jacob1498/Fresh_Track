@@ -1044,6 +1044,14 @@ function updateUIWithUser(username) {
     }
 }
 
+// Sidebar Management
+window.toggleSidebar = function() {
+    const sidebar = document.getElementById('main-sidebar');
+    sidebar.classList.toggle('sidebar-collapsed');
+    const isCollapsed = sidebar.classList.contains('sidebar-collapsed');
+    localStorage.setItem('sidebar-collapsed', isCollapsed);
+};
+
 // Real-time Clock Logic
 function startClock() {
     const container = document.getElementById('realtime-clock');
@@ -1080,6 +1088,12 @@ function init() {
     // Load current username info
     const currentUsername = localStorage.getItem('ft_username') || 'admin@example.com';
     updateUIWithUser(currentUsername);
+
+    // Restore sidebar state
+    const isSidebarCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+    if (isSidebarCollapsed) {
+        document.getElementById('main-sidebar').classList.add('sidebar-collapsed');
+    }
 
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     if (isLoggedIn) {
