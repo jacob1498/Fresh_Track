@@ -121,18 +121,44 @@ function refreshItemStatuses() {
 }
 
 // Authentication Logic
-document.getElementById('login-form').addEventListener('submit', (e) => {
+document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    showLoading("Authenticating...");
+    
     const emailInput = e.target.querySelector('input[type="email"]').value;
     const passwordInput = e.target.querySelector('input[type="password"]').value;
     
-    const storedUser = localStorage.getItem('ft_username') || DEFAULT_USER;
-    const storedPass = localStorage.getItem('ft_password') || DEFAULT_PASS;
+    // 1. Check local credentials first
+    let storedUser = localStorage.getItem('ft_username') || DEFAULT_USER;
+    let storedPass = localStorage.getItem('ft_password') || DEFAULT_PASS;
 
+    // 2. If local doesn't match, attempt to verify with Cloud
+    if (emailInput !== storedUser || passwordInput !== storedPass) {
+        if (supabase) {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', 'admin_account')
+                .single();
+            
+            if (!error && data) {
+                storedUser = data.username;
+                storedPass = data.password;
+                if (data.avatar) localStorage.setItem('ft_avatar', data.avatar);
+            }
+        }
+    }
+
+    hideLoading();
     if (emailInput === storedUser && passwordInput === storedPass) {
+        // Sync local storage with verified credentials
+        localStorage.setItem('ft_username', storedUser);
+        localStorage.setItem('ft_password', storedPass);
         localStorage.setItem('isLoggedIn', 'true');
+        
         document.getElementById('login-view').classList.add('hidden');
         document.getElementById('main-layout').classList.remove('hidden');
+        updateUIWithUser(storedUser);
         startInactivityTimer();
         startAutoSync();
         showView('dashboard');
@@ -1190,7 +1216,7 @@ window.closeAccountModal = function() {
     document.getElementById('account-modal').classList.add('hidden');
 };
 
-window.saveAccountChanges = function(e) {
+window.saveAccountChanges = async function(e) {
     e.preventDefault();
     const newUsername = document.getElementById('acc-username').value;
     const newPassword = document.getElementById('acc-password').value;
@@ -1201,21 +1227,40 @@ window.saveAccountChanges = function(e) {
         localStorage.setItem('ft_password', newPassword);
     }
 
+    showLoading("Syncing Profile...");
+
+    let avatarBase64 = localStorage.getItem('ft_avatar');
+
     if (avatarFile) {
         const reader = new FileReader();
-        reader.onload = function(event) {
-            localStorage.setItem('ft_avatar', event.target.result);
-            updateUIWithUser(newUsername);
-            closeAccountModal();
-            alert('Account updated with new profile picture!');
+        reader.onload = async function(event) {
+            avatarBase64 = event.target.result;
+            localStorage.setItem('ft_avatar', avatarBase64);
+            await syncProfileToCloud(newUsername, newPassword, avatarBase64);
         };
         reader.readAsDataURL(avatarFile);
     } else {
-        updateUIWithUser(newUsername);
-        closeAccountModal();
-        alert('Account credentials updated successfully!');
+        await syncProfileToCloud(newUsername, newPassword, avatarBase64);
     }
 };
+
+async function syncProfileToCloud(username, password, avatar) {
+    if (supabase) {
+        const updates = { id: 'admin_account', username };
+        if (password) updates.password = password;
+        if (avatar) updates.avatar = avatar;
+
+        const { error } = await supabase
+            .from('profiles')
+            .upsert(updates);
+        
+        if (error) console.error("Profile Sync Error:", error.message);
+    }
+    updateUIWithUser(username);
+    hideLoading();
+    closeAccountModal();
+    alert('Account updated and synced to cloud!');
+}
 
 function updateUIWithUser(username) {
     const display = username.split('@')[0];
