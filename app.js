@@ -109,16 +109,15 @@ function startAutoSync() {
 }
 
 function updateSyncUI(active) {
-    const dot = document.getElementById('sync-dot');
-    const label = document.getElementById('sync-label');
-    if (!dot || !label) return;
+    const icon = document.getElementById('sync-icon');
+    if (!icon) return;
 
     if (active) {
-        dot.classList.replace('bg-green-500', 'bg-indigo-500');
-        label.innerText = 'Syncing...';
+        icon.classList.replace('text-green-500', 'text-indigo-500');
+        icon.classList.add('animate-pulse');
     } else {
-        dot.classList.replace('bg-indigo-500', 'bg-green-500');
-        label.innerText = 'Cloud Sync';
+        icon.classList.replace('text-indigo-500', 'text-green-500');
+        icon.classList.remove('animate-pulse');
     }
 }
 
@@ -414,45 +413,49 @@ function renderList() {
     const allFilteredSelected = filteredItems.length > 0 && filteredItems.every(i => selectedItemIds.has(i.id));
 
     listContainer.innerHTML = `
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-            <h3 class="text-xl font-black text-gray-900">Inventory Management</h3>
-            <div class="flex flex-1 w-full md:w-auto gap-3">
+        <div class="flex flex-col gap-4 mb-6">
+            <div class="flex justify-between items-center">
+                <h3 class="text-xl font-black text-gray-900">Inventory</h3>
                 ${selectedItemIds.size > 0 ? `
-                    <button onclick="bulkDelete()" class="bg-red-50 border border-red-200 text-red-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-100 transition whitespace-nowrap" title="Delete Selected">
-                        <i class="fas fa-trash-alt mr-1"></i> Delete (${selectedItemIds.size})
+                    <button onclick="bulkDelete()" class="bg-red-50 border border-red-200 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100 transition whitespace-nowrap animate-fadeIn">
+                        <i class="fas fa-trash-alt mr-1"></i> Delete ${selectedItemIds.size}
                     </button>
                 ` : ''}
-                <div class="relative flex-1 md:w-64">
-                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                    <input type="text" id="inventory-search" placeholder="Search by code or description..." 
+            </div>
+
+            <!-- Search and Filter Controls -->
+            <div class="flex flex-col md:flex-row gap-3">
+                <!-- Search Bar -->
+                <div class="relative flex-1">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" id="inventory-search" placeholder="Search code, name, or category..." 
                         value="${searchTerm}" 
                         oninput="handleSearch(this.value)"
-                        class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition">
+                        class="w-full pl-11 pr-4 py-3 md:py-2 border border-gray-200 rounded-xl md:rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition shadow-sm md:shadow-none">
                 </div>
-                <select onchange="handleStatusFilter(this.value)" class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-gray-600 cursor-pointer transition shadow-sm">
-                    <option value="All" ${statusFilter === 'All' ? 'selected' : ''}>All Status</option>
-                    <option value="Active" ${statusFilter === 'Active' ? 'selected' : ''}>Active</option>
-                    <option value="Expiring" ${statusFilter === 'Expiring' ? 'selected' : ''}>Expiring</option>
-                    <option value="Expired" ${statusFilter === 'Expired' ? 'selected' : ''}>Expired</option>
-                </select>
-                <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-2 shadow-sm">
-                    <i class="fas fa-calendar-alt text-gray-400 text-xs ml-1"></i>
-                    <input type="date" value="${startDateFilter}" onchange="handleDateFilter('start', this.value)" class="bg-transparent text-xs text-gray-600 outline-none py-2 cursor-pointer w-28" title="Start Expiry Date">
-                    <span class="text-gray-300 text-[10px] font-bold">TO</span>
-                    <input type="date" value="${endDateFilter}" onchange="handleDateFilter('end', this.value)" class="bg-transparent text-xs text-gray-600 outline-none py-2 cursor-pointer w-28" title="End Expiry Date">
-                    ${(startDateFilter || endDateFilter) ? `
-                        <button onclick="handleDateFilter('clear')" class="text-gray-400 hover:text-red-500 transition-colors ml-1 px-1" title="Clear Date Filter">
-                            <i class="fas fa-times-circle"></i>
-                        </button>
-                    ` : ''}
-                </div>
-                <div class="hidden md:flex gap-2">
-                    <button onclick="document.getElementById('csv-upload').click()" class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50 transition flex items-center gap-2">
-                        <i class="fas fa-upload"></i> Bulk Upload
-                    </button>
-                    <button onclick="downloadSampleCSV()" class="text-indigo-600 hover:text-indigo-800 text-xs font-semibold underline transition self-center px-1">
-                        Get Sample CSV
-                    </button>
+
+                <!-- Filter Bar -->
+                <div class="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
+                    <select onchange="handleStatusFilter(this.value)" class="flex-1 md:flex-none px-4 py-3 md:py-2 border border-gray-200 rounded-xl md:rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-gray-700 cursor-pointer transition shadow-sm md:shadow-none min-w-[120px]">
+                        <option value="All" ${statusFilter === 'All' ? 'selected' : ''}>All Status</option>
+                        <option value="Active" ${statusFilter === 'Active' ? 'selected' : ''}>Active</option>
+                        <option value="Expiring" ${statusFilter === 'Expiring' ? 'selected' : ''}>Expiring</option>
+                        <option value="Expired" ${statusFilter === 'Expired' ? 'selected' : ''}>Expired</option>
+                    </select>
+
+                    <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-xl md:rounded-lg px-3 shadow-sm md:shadow-none flex-1 md:flex-none">
+                        <i class="fas fa-calendar-alt text-indigo-500 text-xs"></i>
+                        <div class="flex items-center gap-1">
+                            <input type="date" value="${startDateFilter}" onchange="handleDateFilter('start', this.value)" class="bg-transparent text-[11px] font-bold text-gray-600 outline-none py-2 cursor-pointer w-[90px]" title="Start Date">
+                            <span class="text-gray-300 text-[10px] font-black mx-1">/</span>
+                            <input type="date" value="${endDateFilter}" onchange="handleDateFilter('end', this.value)" class="bg-transparent text-[11px] font-bold text-gray-600 outline-none py-2 cursor-pointer w-[90px]" title="End Date">
+                        </div>
+                        ${(startDateFilter || endDateFilter) ? `
+                            <button onclick="handleDateFilter('clear')" class="text-red-400 hover:text-red-600 transition-colors ml-1 p-1">
+                                <i class="fas fa-times-circle"></i>
+                            </button>
+                        ` : ''}
+                    </div>
                 </div>
             </div>
         </div>
@@ -1222,6 +1225,35 @@ function renderSettings() {
                                     <p class="font-bold text-gray-800">admin@freshtrack.io</p>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- App Appearance -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <h4 class="text-sm font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                            <i class="fas fa-palette text-indigo-500"></i> App Appearance
+                        </h4>
+                        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                            <button onclick="setTheme('default')" class="flex flex-col items-center gap-2 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition group">
+                                <span class="w-8 h-8 rounded-full bg-indigo-600 shadow-md ring-2 ring-white"></span>
+                                <span class="text-[10px] font-bold text-gray-600 uppercase">Indigo</span>
+                            </button>
+                            <button onclick="setTheme('teal')" class="flex flex-col items-center gap-2 p-3 rounded-xl border border-gray-100 hover:bg-teal-50 transition group">
+                                <span class="w-8 h-8 rounded-full bg-teal-500 shadow-md ring-2 ring-white"></span>
+                                <span class="text-[10px] font-bold text-gray-600 uppercase">Teal</span>
+                            </button>
+                            <button onclick="setTheme('cream')" class="flex flex-col items-center gap-2 p-3 rounded-xl border border-gray-100 hover:bg-orange-50 transition group">
+                                <span class="w-8 h-8 rounded-full bg-orange-200 shadow-md ring-2 ring-white border border-orange-300"></span>
+                                <span class="text-[10px] font-bold text-gray-600 uppercase">Cream</span>
+                            </button>
+                            <button onclick="setTheme('pink')" class="flex flex-col items-center gap-2 p-3 rounded-xl border border-gray-100 hover:bg-pink-50 transition group">
+                                <span class="w-8 h-8 rounded-full bg-pink-400 shadow-md ring-2 ring-white"></span>
+                                <span class="text-[10px] font-bold text-gray-600 uppercase">Pink</span>
+                            </button>
+                            <button onclick="setTheme('dark')" class="flex flex-col items-center gap-2 p-3 rounded-xl border border-gray-100 bg-slate-900 transition group">
+                                <span class="w-8 h-8 rounded-full bg-slate-700 shadow-md ring-2 ring-slate-800"></span>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase">Dark</span>
+                            </button>
                         </div>
                     </div>
 
