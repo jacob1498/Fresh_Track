@@ -88,7 +88,10 @@
         </div>
     </div>
 
-    <!-- Main Application Layout (Hidden by default) -->
+    <!-- Hidden Global Inputs -->
+    <input type="file" id="csv-upload" class="hidden" accept=".csv" onchange="handleUpload(event)">
+
+    <!-- Main Application Layout -->
     <div id="main-layout" class="hidden flex h-screen overflow-hidden relative z-10">
         
         <!-- Mobile Sidebar Overlay -->
