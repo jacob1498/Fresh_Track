@@ -16,8 +16,8 @@ const INACTIVITY_LIMIT = 30 * 60 * 1000; // 30 minutes in milliseconds
 const SUPABASE_URL = 'https://mroinbosnhkimutkrnqs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb2luYm9zbmhraW11dGtybnFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNjU5MzYsImV4cCI6MjA5MDY0MTkzNn0.eDhVYEQGLg-Hq66VbggB4AAY7nPX6k5dVbNhEv6PLzY';
 
-const supabase = (typeof supabase !== 'undefined') ? 
-    supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+const supabaseClient = (window.supabase) ? 
+    window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 // Session State
 let inactivityTimer;
@@ -59,11 +59,11 @@ function calculateStatus(expiryDateStr) {
 
 // Cloud Data Fetching Logic
 async function fetchCloudData(silent = false) {
-    if (!supabase) return;
+    if (!supabaseClient) return;
     if (!silent) showLoading("Syncing with Cloud...");
     
     try {
-        const { data, error } = await supabase.from('inventory').select('*');
+        const { data, error } = await supabaseClient.from('inventory').select('*');
         if (!error && data) {
             items = data;
             localStorage.setItem('ft_inventory_data', JSON.stringify(items));
@@ -102,8 +102,8 @@ async function saveItems() {
     localStorage.setItem('ft_inventory_data', JSON.stringify(items));
 
     // 2. Sync to Cloud if Supabase is initialized
-    if (supabase) {
-        const { error } = await supabase
+    if (supabaseClient) {
+        const { error } = await supabaseClient
             .from('inventory')
             .upsert(items, { onConflict: 'id' });
         
@@ -134,8 +134,8 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 
     // 2. If local doesn't match, attempt to verify with Cloud
     if (emailInput !== storedUser || passwordInput !== storedPass) {
-        if (supabase) {
-            const { data, error } = await supabase
+        if (supabaseClient) {
+            const { data, error } = await supabaseClient
                 .from('profiles')
                 .select('*')
                 .eq('id', 'admin_account')
@@ -623,8 +623,8 @@ window.bulkDelete = function() {
         saveItems();
 
         // Explicitly remove from Cloud
-        if (supabase) {
-            supabase.from('inventory').delete().in('id', idsToDelete).then(({error}) => {
+        if (supabaseClient) {
+            supabaseClient.from('inventory').delete().in('id', idsToDelete).then(({error}) => {
                 if (error) console.error("Cloud Delete Error:", error.message);
             });
         }
@@ -798,8 +798,8 @@ window.deleteItem = function(id) {
         saveItems();
 
         // Explicitly remove from Cloud
-        if (supabase) {
-            supabase.from('inventory').delete().eq('id', id).then(({error}) => {
+        if (supabaseClient) {
+            supabaseClient.from('inventory').delete().eq('id', id).then(({error}) => {
                 if (error) console.error("Cloud Delete Error:", error.message);
             });
         }
@@ -1245,12 +1245,12 @@ window.saveAccountChanges = async function(e) {
 };
 
 async function syncProfileToCloud(username, password, avatar) {
-    if (supabase) {
+    if (supabaseClient) {
         const updates = { id: 'admin_account', username };
         if (password) updates.password = password;
         if (avatar) updates.avatar = avatar;
 
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('profiles')
             .upsert(updates);
         
