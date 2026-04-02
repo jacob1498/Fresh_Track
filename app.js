@@ -647,6 +647,7 @@ window.saveAdd = function(e) {
     const expiryDate = document.getElementById('add-expiryDate').value;
     const newItem = {
         id: Date.now() + Math.random(),
+        id: Math.floor(Date.now() + Math.random() * 1000),
         location: document.getElementById('add-location').value,
         itemCode: document.getElementById('add-itemCode').value,
         description: document.getElementById('add-description').value,
@@ -854,6 +855,7 @@ function handleUpload(event) {
 
                 newItems.push({
                     id: Date.now() + Math.random(),
+                    id: Math.floor(Date.now() + Math.random() * 1000),
                     location: v[0]?.trim() || 'N/A',
                     itemCode: v[1]?.trim() || 'N/A',
                     description: v[2]?.trim() || 'N/A',
