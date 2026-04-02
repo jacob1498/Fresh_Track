@@ -23,6 +23,7 @@ const supabaseClient = (window.supabase) ?
 let inactivityTimer;
 let autoSyncTimer;
 let isSyncing = false;
+let fabMenuOpen = false;
 
 // Mock Data
 let items = [];
@@ -227,6 +228,8 @@ window.showView = function(viewId) {
     // Persist current view
     localStorage.setItem('currentView', viewId);
     
+    fabMenuOpen = false; // Reset FAB menu when switching views
+
     // Hide all views
     document.querySelectorAll('.view-content').forEach(view => view.classList.add('hidden'));
     
@@ -252,6 +255,7 @@ window.showView = function(viewId) {
     if (viewId === 'list') renderList();
     if (viewId === 'reports') renderReports();
     if (viewId === 'settings') renderSettings();
+    renderFAB();
 }
 
 function renderDashboard() {
@@ -442,8 +446,7 @@ function renderList() {
                         </button>
                     ` : ''}
                 </div>
-                <div class="flex gap-2">
-                    <input type="file" id="csv-upload" class="hidden" accept=".csv" onchange="handleUpload(event)">
+                <div class="hidden md:flex gap-2">
                     <button onclick="document.getElementById('csv-upload').click()" class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-50 transition flex items-center gap-2">
                         <i class="fas fa-upload"></i> Bulk Upload
                     </button>
@@ -576,10 +579,34 @@ function renderList() {
             </div>
         </div>
 
-        <!-- Floating Action Button (FAB) -->
-        <button onclick="openAddModal()" class="fixed bottom-6 right-6 md:bottom-10 md:right-10 z-30 w-14 h-14 md:w-16 md:h-16 rounded-full bg-indigo-600 text-white shadow-[0_8px_30px_rgb(79,70,229,0.3)] flex items-center justify-center hover:bg-indigo-700 transition-all duration-300 active:scale-90 hover:scale-110 group border-4 border-white">
-            <i class="fas fa-plus text-xl md:text-2xl transition-transform duration-500 group-hover:rotate-90"></i>
-        </button>
+        <!-- Expandable Floating Action Button (FAB) Speed Dial -->
+        <div class="fixed bottom-6 right-6 md:bottom-10 md:right-10 z-30 flex flex-col items-end gap-3">
+            <!-- Sub-actions Menu -->
+            <div id="fab-options" class="${fabMenuOpen ? 'flex' : 'hidden'} flex-col items-end gap-3 mb-2">
+                <div class="flex items-center gap-3 animate-popIn">
+                    <span class="bg-slate-800 text-white text-[10px] font-black px-2 py-1 rounded shadow-lg uppercase tracking-widest">Get Sample</span>
+                    <button onclick="downloadSampleCSV(); toggleFabMenu();" class="w-12 h-12 rounded-full bg-white border border-gray-100 text-amber-600 shadow-xl flex items-center justify-center hover:bg-amber-50 transition-all active:scale-95">
+                        <i class="fas fa-file-csv text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-center gap-3 animate-popIn" style="animation-delay: 50ms">
+                    <span class="bg-slate-800 text-white text-[10px] font-black px-2 py-1 rounded shadow-lg uppercase tracking-widest">Bulk Import</span>
+                    <button onclick="document.getElementById('csv-upload').click(); toggleFabMenu();" class="w-12 h-12 rounded-full bg-white border border-gray-200 text-green-600 shadow-xl flex items-center justify-center hover:bg-green-50 transition-all active:scale-95">
+                        <i class="fas fa-upload text-lg"></i>
+                    </button>
+                </div>
+                <div class="flex items-center gap-3 animate-popIn" style="animation-delay: 100ms">
+                    <span class="bg-slate-800 text-white text-[10px] font-black px-2 py-1 rounded shadow-lg uppercase tracking-widest">Manual Add</span>
+                    <button onclick="openAddModal(); toggleFabMenu();" class="w-12 h-12 rounded-full bg-white border border-gray-200 text-indigo-600 shadow-xl flex items-center justify-center hover:bg-indigo-50 transition-all active:scale-95">
+                        <i class="fas fa-plus text-lg"></i>
+                    </button>
+                </div>
+            </div>
+            <!-- Main Toggle Button -->
+            <button onclick="toggleFabMenu()" class="w-14 h-14 md:w-16 md:h-16 rounded-full bg-indigo-600 text-white shadow-[0_8px_30px_rgb(79,70,229,0.4)] flex items-center justify-center hover:bg-indigo-700 transition-all duration-300 active:scale-90 border-4 border-white">
+                <i class="fas ${fabMenuOpen ? 'fa-times rotate-90' : 'fa-plus'} text-xl md:text-2xl transition-all duration-300"></i>
+            </button>
+        </div>
     `;
 
     // Restore search focus and cursor position if it was active
@@ -596,6 +623,11 @@ function renderList() {
         }, 50);
     }
 }
+
+window.toggleFabMenu = function() {
+    fabMenuOpen = !fabMenuOpen;
+    renderList();
+};
 
 window.setFocus = function(index, id, event) {
     focusedIndex = index;
