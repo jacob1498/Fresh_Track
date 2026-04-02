@@ -230,6 +230,11 @@ function showView(viewId) {
     // Hide all views
     document.querySelectorAll('.view-content').forEach(view => view.classList.add('hidden'));
     
+    // Close sidebar on mobile after selection
+    if (window.innerWidth < 768) {
+        closeSidebarMobile();
+    }
+
     // Update Sidebar links
     document.querySelectorAll('.nav-link').forEach(link => {
         link.classList.remove('bg-slate-800', 'text-white');
@@ -386,6 +391,8 @@ function renderList() {
     const isSearchFocused = document.activeElement === searchInput;
     const selectionStart = searchInput ? searchInput.selectionStart : 0;
     const selectionEnd = searchInput ? searchInput.selectionEnd : 0;
+    
+    const isMobile = window.innerWidth < 768;
 
     // Pagination logic
     const totalItems = filteredItems.length;
@@ -448,6 +455,7 @@ function renderList() {
             </div>
         </div>
         <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+            ${!isMobile ? `
             <div class="overflow-x-auto">
                 <table class="w-full text-left">
                     <thead class="border-b border-gray-100">
@@ -514,7 +522,36 @@ function renderList() {
                         `}
                     </tbody>
                 </table>
-            </div>
+            </div>` : `
+            <div class="divide-y divide-gray-100">
+                ${paginatedItems.map(i => `
+                    <div class="p-4 flex flex-col gap-3 active:bg-gray-50 transition" onclick="setFocus(0, ${i.id}, event)">
+                        <div class="flex justify-between items-start">
+                            <div class="flex flex-col">
+                                <span class="text-xs font-mono text-indigo-600 font-bold">${i.itemCode}</span>
+                                <span class="font-bold text-gray-800">${i.description}</span>
+                            </div>
+                            <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter ${
+                                i.status === 'Expired' ? 'bg-red-100 text-red-700' : 
+                                i.status === 'Expiring' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
+                            }">${i.status}</span>
+                        </div>
+                        <div class="flex justify-between items-center text-xs text-gray-500">
+                            <span><i class="fas fa-map-marker-alt mr-1"></i> ${i.location}</span>
+                            <span class="font-bold text-gray-700">Expires: ${i.expiryDate}</span>
+                        </div>
+                        <div class="flex justify-between items-center pt-2">
+                            <button onclick="openQtyCalc(${i.id})" class="px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg font-bold text-sm">
+                                Qty: ${i.qty} <i class="fas fa-calculator ml-2 opacity-50"></i>
+                            </button>
+                            <div class="flex gap-4">
+                                <button onclick="openEditModal(${i.id})" class="text-gray-400 p-2"><i class="fas fa-edit"></i></button>
+                                <button onclick="deleteItem(${i.id})" class="text-red-400 p-2"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>`}
             <!-- Pagination Footer -->
             <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
                 <div class="flex items-center gap-4 text-sm text-gray-500">
@@ -1361,10 +1398,27 @@ window.resetInactivityTimer = function() {
 // Sidebar Management
 window.toggleSidebar = function() {
     const sidebar = document.getElementById('main-sidebar');
-    sidebar.classList.toggle('sidebar-collapsed');
-    const isCollapsed = sidebar.classList.contains('sidebar-collapsed');
-    localStorage.setItem('sidebar-collapsed', isCollapsed);
+    const overlay = document.getElementById('sidebar-overlay');
+    
+    if (window.innerWidth < 768) {
+        const isOpen = sidebar.classList.contains('translate-x-0');
+        if (isOpen) {
+            closeSidebarMobile();
+        } else {
+            sidebar.classList.replace('-translate-x-full', 'translate-x-0');
+            overlay.classList.remove('hidden');
+        }
+    } else {
+        sidebar.classList.toggle('sidebar-collapsed');
+        const isCollapsed = sidebar.classList.contains('sidebar-collapsed');
+        localStorage.setItem('sidebar-collapsed', isCollapsed);
+    }
 };
+
+function closeSidebarMobile() {
+    document.getElementById('main-sidebar').classList.replace('translate-x-0', '-translate-x-full');
+    document.getElementById('sidebar-overlay').classList.add('hidden');
+}
 
 // Real-time Clock Logic
 function startClock() {
@@ -1405,6 +1459,11 @@ function init() {
 
     // Load inventory data and start background sync
     fetchCloudData();
+
+    // Register PWA Service Worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').catch(err => console.log('SW failed', err));
+    }
 
     // Setup Activity Listeners
     const activityEvents = ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'];
