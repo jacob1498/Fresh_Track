@@ -22,6 +22,7 @@ const supabaseClient = (window.supabase) ?
 // Session State
 let inactivityTimer;
 let autoSyncTimer;
+let isSyncing = false;
 
 // Mock Data
 let items = [];
@@ -59,7 +60,11 @@ function calculateStatus(expiryDateStr) {
 
 // Cloud Data Fetching Logic
 async function fetchCloudData(silent = false) {
-    if (!supabaseClient) return;
+    if (!supabaseClient || isSyncing) return;
+    
+    isSyncing = true;
+    updateSyncUI(true);
+
     if (!silent) showLoading("Syncing with Cloud...");
     
     try {
@@ -80,6 +85,8 @@ async function fetchCloudData(silent = false) {
         console.error("Cloud Fetch Error:", e);
     } finally {
         if (!silent) hideLoading();
+        isSyncing = false;
+        setTimeout(() => updateSyncUI(false), 500);
     }
 }
 
@@ -88,7 +95,21 @@ function startAutoSync() {
     const isEnabled = localStorage.getItem('autoRefreshEnabled') !== 'false'; // Default true
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     if (isEnabled && isLoggedIn) {
-        autoSyncTimer = setInterval(() => fetchCloudData(true), 2000); // Sync every 2 seconds
+        autoSyncTimer = setInterval(() => fetchCloudData(true), 2000); 
+    }
+}
+
+function updateSyncUI(active) {
+    const dot = document.getElementById('sync-dot');
+    const label = document.getElementById('sync-label');
+    if (!dot || !label) return;
+
+    if (active) {
+        dot.classList.replace('bg-green-500', 'bg-indigo-500');
+        label.innerText = 'Syncing...';
+    } else {
+        dot.classList.replace('bg-indigo-500', 'bg-green-500');
+        label.innerText = 'Cloud Sync';
     }
 }
 
@@ -111,13 +132,19 @@ async function saveItems() {
     }
 }
 
-// Centralized logic to ensure all item statuses are up-to-date based on current date
-function refreshItemStatuses() {
-    items = items.map(item => ({
-        ...item,
-        status: calculateStatus(item.expiryDate)
-    }));
-    saveItems();
+// Centralized logic to ensure all item statuses are up-to-date
+function refreshItemStatuses(skipSave = false) {
+    let changed = false;
+    items = items.map(item => {
+        const newStatus = calculateStatus(item.expiryDate);
+        if (item.status !== newStatus) {
+            changed = true;
+            return { ...item, status: newStatus };
+        }
+        return item;
+    });
+    
+    if (changed && !skipSave) saveItems();
 }
 
 // Authentication Logic
@@ -160,7 +187,6 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         document.getElementById('main-layout').classList.remove('hidden');
         updateUIWithUser(storedUser);
         startInactivityTimer();
-        startAutoSync();
         showView('dashboard');
     } else {
         alert('Invalid credentials. Please try again.');
@@ -318,7 +344,7 @@ function renderDashboard() {
 // Centralized logic for processing items for the list view
 function getProcessedItems() {
     // Ensure statuses are synced before filtering/sorting
-    refreshItemStatuses();
+    refreshItemStatuses(true); // Don't trigger a cloud save during a simple list refresh
 
     const filtered = items.filter(i => {
         const matchesSearch = i.itemCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -345,6 +371,12 @@ function getProcessedItems() {
 function renderList() {
     const listContainer = document.getElementById('view-list');
     const filteredItems = getProcessedItems();
+
+    // Store current search focus and cursor position before re-rendering
+    const searchInput = document.getElementById('inventory-search');
+    const isSearchFocused = document.activeElement === searchInput;
+    const selectionStart = searchInput ? searchInput.selectionStart : 0;
+    const selectionEnd = searchInput ? searchInput.selectionEnd : 0;
 
     // Pagination logic
     const totalItems = filteredItems.length;
@@ -500,7 +532,14 @@ function renderList() {
         </div>
     `;
 
-    // Auto-scroll focused row into view
+    // Restore search focus and cursor position if it was active
+    const newSearchInput = document.getElementById('inventory-search');
+    if (isSearchFocused && newSearchInput) {
+        newSearchInput.focus();
+        newSearchInput.setSelectionRange(selectionStart, selectionEnd);
+    }
+
+    // Auto-scroll focused row into view if navigating via keyboard
     if (focusedIndex !== -1) {
         setTimeout(() => {
             document.getElementById(`row-${focusedIndex}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -526,12 +565,6 @@ window.handleSearch = function(val) {
     searchTerm = val;
     currentPage = 1;
     renderList();
-    // Maintain focus and cursor position
-    const input = document.getElementById('inventory-search');
-    if (input) {
-        input.focus();
-        input.setSelectionRange(val.length, val.length);
-    }
 };
 
 // Keyboard Navigation Logic
@@ -617,13 +650,13 @@ window.toggleSelectItem = function(id) {
     renderList();
 };
 
-window.bulkDelete = function() {
+window.bulkDelete = async function() {
     if (confirm(`Are you sure you want to delete ${selectedItemIds.size} selected items?`)) {
         const idsToDelete = Array.from(selectedItemIds);
         
         items = items.filter(item => !selectedItemIds.has(item.id));
         selectedItemIds.clear();
-        saveItems();
+        await saveItems();
 
         // Explicitly remove from Cloud
         if (supabaseClient) {
@@ -645,7 +678,7 @@ window.closeAddModal = function() {
     document.getElementById('add-modal').classList.add('hidden');
 };
 
-window.saveAdd = function(e) {
+window.saveAdd = async function(e) {
     e.preventDefault();
     const expiryDate = document.getElementById('add-expiryDate').value;
     const newItem = {
@@ -663,7 +696,7 @@ window.saveAdd = function(e) {
     };
 
     items.push(newItem);
-    saveItems();
+    await saveItems();
     closeAddModal();
     renderList();
 };
@@ -699,7 +732,7 @@ function updateCalcDisplay() {
     document.getElementById('calc-display').innerText = calcInputValue;
 }
 
-window.submitAdjustment = function(type) {
+window.submitAdjustment = async function(type) {
     if (calcActiveItemId === null) return closeQtyCalc();
     
     const adjustment = parseInt(calcInputValue);
@@ -728,7 +761,7 @@ window.submitAdjustment = function(type) {
         return i;
     });
 
-    saveItems();
+    await saveItems();
     closeQtyCalc();
     renderList();
 };
@@ -754,7 +787,7 @@ window.closeEditModal = function() {
     document.getElementById('edit-modal').classList.add('hidden');
 };
 
-window.saveEdit = function(e) {
+window.saveEdit = async function(e) {
     e.preventDefault();
     const id = parseInt(document.getElementById('edit-id').value);
     const expiryDate = document.getElementById('edit-expiryDate').value;
@@ -778,7 +811,7 @@ window.saveEdit = function(e) {
         return item;
     });
 
-    saveItems();
+    await saveItems();
     closeEditModal();
     renderList();
 };
@@ -794,11 +827,11 @@ window.handleSort = function(col) {
     renderList();
 };
 
-window.deleteItem = function(id) {
+window.deleteItem = async function(id) {
     if (confirm('Are you sure you want to delete this item?')) {
         items = items.filter(item => item.id !== id);
         selectedItemIds.delete(id);
-        saveItems();
+        await saveItems();
 
         // Explicitly remove from Cloud
         if (supabaseClient) {
@@ -1362,9 +1395,7 @@ function init() {
     updateUIWithUser(currentUsername);
 
     // Load inventory data and start background sync
-    fetchCloudData().then(() => {
-        startAutoSync();
-    });
+    fetchCloudData();
 
     // Setup Activity Listeners
     const activityEvents = ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'];
@@ -1381,7 +1412,6 @@ function init() {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     if (isLoggedIn) {
         startInactivityTimer();
-        startAutoSync();
         document.getElementById('login-view').classList.add('hidden');
         document.getElementById('main-layout').classList.remove('hidden');
         const savedView = localStorage.getItem('currentView') || 'dashboard';
