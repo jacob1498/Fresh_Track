@@ -88,7 +88,7 @@ function startAutoSync() {
     const isEnabled = localStorage.getItem('autoRefreshEnabled') !== 'false'; // Default true
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     if (isEnabled && isLoggedIn) {
-        autoSyncTimer = setInterval(() => fetchCloudData(true), 60000); // Sync every 60 seconds
+        autoSyncTimer = setInterval(() => fetchCloudData(true), 2000); // Sync every 2 seconds
     }
 }
 
@@ -592,9 +592,12 @@ window.handleDateFilter = function(type, val) {
 window.toggleSelectAll = function(isChecked) {
     const filteredItems = items.filter(i => {
         const matchesSearch = i.itemCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                             i.description.toLowerCase().includes(searchTerm.toLowerCase());
+                             i.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                             (i.category && i.category.toLowerCase().includes(searchTerm.toLowerCase()));
         const matchesStatus = statusFilter === 'All' || i.status === statusFilter;
-        return matchesSearch && matchesStatus;
+        const matchesDate = (!startDateFilter || i.expiryDate >= startDateFilter) && 
+                           (!endDateFilter || i.expiryDate <= endDateFilter);
+        return matchesSearch && matchesStatus && matchesDate;
     });
 
     if (isChecked) {
@@ -646,7 +649,6 @@ window.saveAdd = function(e) {
     e.preventDefault();
     const expiryDate = document.getElementById('add-expiryDate').value;
     const newItem = {
-        id: Date.now() + Math.random(),
         id: Math.floor(Date.now() + Math.random() * 1000),
         location: document.getElementById('add-location').value,
         itemCode: document.getElementById('add-itemCode').value,
@@ -754,7 +756,7 @@ window.closeEditModal = function() {
 
 window.saveEdit = function(e) {
     e.preventDefault();
-    const id = parseFloat(document.getElementById('edit-id').value);
+    const id = parseInt(document.getElementById('edit-id').value);
     const expiryDate = document.getElementById('edit-expiryDate').value;
     
     items = items.map(item => {
@@ -854,7 +856,6 @@ function handleUpload(event) {
                 }
 
                 newItems.push({
-                    id: Date.now() + Math.random(),
                     id: Math.floor(Date.now() + Math.random() * 1000),
                     location: v[0]?.trim() || 'N/A',
                     itemCode: v[1]?.trim() || 'N/A',
@@ -1118,7 +1119,7 @@ function renderSettings() {
                             <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-transparent hover:border-gray-100 transition-all">
                                 <div>
                                     <p class="font-bold text-gray-800 text-sm">Real-time Dashboard Updates</p>
-                                    <p class="text-xs text-gray-500">Refresh statistics every 60 seconds automatically.</p>
+                                    <p class="text-xs text-gray-500">Refresh statistics every 2 seconds automatically.</p>
                                 </div>
                                 <label class="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" id="pref-auto-refresh" onchange="toggleAutoRefresh(this.checked)" 
