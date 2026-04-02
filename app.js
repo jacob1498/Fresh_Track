@@ -212,7 +212,7 @@ function logout() {
 }
 
 // Navigation Logic
-function showView(viewId) {
+window.showView = function(viewId) {
     // Recalculate all statuses whenever switching views to ensure date-based accuracy
     refreshItemStatuses();
 
@@ -450,7 +450,6 @@ function renderList() {
                     <button onclick="downloadSampleCSV()" class="text-indigo-600 hover:text-indigo-800 text-xs font-semibold underline transition self-center px-1">
                         Get Sample CSV
                     </button>
-                    <button onclick="openAddModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition">+ Add Item</button>
                 </div>
             </div>
         </div>
@@ -576,6 +575,11 @@ function renderList() {
                 </div>
             </div>
         </div>
+
+        <!-- Floating Action Button (FAB) -->
+        <button onclick="openAddModal()" class="fixed bottom-6 right-6 md:bottom-10 md:right-10 z-30 w-14 h-14 md:w-16 md:h-16 rounded-full bg-indigo-600 text-white shadow-[0_8px_30px_rgb(79,70,229,0.3)] flex items-center justify-center hover:bg-indigo-700 transition-all duration-300 active:scale-90 hover:scale-110 group border-4 border-white">
+            <i class="fas fa-plus text-xl md:text-2xl transition-transform duration-500 group-hover:rotate-90"></i>
+        </button>
     `;
 
     // Restore search focus and cursor position if it was active
