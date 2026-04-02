@@ -73,9 +73,11 @@ async function fetchCloudData(silent = false) {
             items = data;
             localStorage.setItem('ft_inventory_data', JSON.stringify(items));
             
-            // Refresh statuses based on current time and re-render current view
+            // Refresh statuses and re-render the view if it's the dashboard or list
             refreshItemStatuses();
             const currentView = localStorage.getItem('currentView') || 'dashboard';
+            
+            // Auto-refresh specifically for list and dashboard during background sync
             if (currentView === 'dashboard') renderDashboard();
             else if (currentView === 'list') renderList();
             else if (currentView === 'reports') renderReports();
@@ -95,7 +97,13 @@ function startAutoSync() {
     const isEnabled = localStorage.getItem('autoRefreshEnabled') !== 'false'; // Default true
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     if (isEnabled && isLoggedIn) {
-        autoSyncTimer = setInterval(() => fetchCloudData(true), 2000); 
+        autoSyncTimer = setInterval(() => {
+            const currentView = localStorage.getItem('currentView') || 'dashboard';
+            // Specifically trigger auto-refresh for list and dashboard
+            if (currentView === 'dashboard' || currentView === 'list') {
+                fetchCloudData(true);
+            }
+        }, 2000); 
     }
 }
 
@@ -188,6 +196,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         updateUIWithUser(storedUser);
         startInactivityTimer();
         showView('dashboard');
+        startAutoSync(); // Immediately start the 2s refresh timer upon login
     } else {
         alert('Invalid credentials. Please try again.');
     }
