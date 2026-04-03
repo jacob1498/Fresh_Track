@@ -261,10 +261,11 @@ window.showView = function(viewId) {
 }
 
 function renderDashboard() {
-    const expiredCount = items.filter(i => i.status === 'Expired').length;
-    const expiringCount = items.filter(i => i.status === 'Expiring').length;
-    const activeCount = items.filter(i => i.status === 'Active').length;
-    const totalCount = items.length;
+    const liveItems = items.filter(i => !i.isRTV);
+    const expiredCount = liveItems.filter(i => i.status === 'Expired').length;
+    const expiringCount = liveItems.filter(i => i.status === 'Expiring').length;
+    const activeCount = liveItems.filter(i => i.status === 'Active').length;
+    const totalCount = liveItems.length;
 
     document.getElementById('stats-grid').innerHTML = `
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all group">
@@ -460,7 +461,7 @@ function getProcessedItems() {
     refreshItemStatuses(true); // Don't trigger a cloud save during a simple list refresh
 
     const filtered = items.filter(i => {
-        const isRTV = i.qty === 0 && (i.history || '').includes('RTV');
+        const isRTV = i.isRTV === true;
         const matchesTab = listTab === 'inventory' ? !isRTV : isRTV;
         if (!matchesTab) return false;
 
@@ -496,8 +497,8 @@ function renderList() {
     const listContainer = document.getElementById('view-list');
     const filteredItems = getProcessedItems();
 
-    const activeCount = items.filter(i => !(i.qty === 0 && (i.history || '').includes('RTV'))).length;
-    const rtvCount = items.filter(i => i.qty === 0 && (i.history || '').includes('RTV')).length;
+    const activeCount = items.filter(i => !i.isRTV).length;
+    const rtvCount = items.filter(i => i.isRTV).length;
 
     // Store current search focus and cursor position before re-rendering
     const searchInput = document.getElementById('inventory-search');
@@ -924,13 +925,13 @@ window.bulkRTV = async function() {
         // Save current state for Undo feature
         lastActionState = items
             .filter(i => selectedItemIds.has(i.id))
-            .map(i => ({ id: i.id, qty: i.qty, history: i.history }));
+            .map(i => ({ id: i.id, isRTV: i.isRTV, history: i.history }));
 
         items = items.map(i => {
             if (selectedItemIds.has(i.id)) {
                 return { 
                     ...i, 
-                    qty: 0, 
+                    isRTV: true, 
                     history: `Bulk RTV Processed (${timestamp})`
                 };
             }
@@ -1127,13 +1128,13 @@ window.handleRTV = async function(id) {
         const timestamp = new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         
         // Save current state for Undo feature
-        lastActionState = [{ id: item.id, qty: item.qty, history: item.history }];
+        lastActionState = [{ id: item.id, isRTV: item.isRTV, history: item.history }];
 
         items = items.map(i => {
             if (i.id === id) {
                 return { 
                     ...i, 
-                    qty: 0, 
+                    isRTV: true, 
                     history: `RTV Processed (${timestamp})`
                 };
             }
@@ -1152,7 +1153,7 @@ window.undoAction = async function() {
     items = items.map(i => {
         const prevState = lastActionState.find(s => s.id === i.id);
         if (prevState) {
-            return { ...i, qty: prevState.qty, history: prevState.history };
+            return { ...i, isRTV: prevState.isRTV, history: prevState.history };
         }
         return i;
     });
@@ -1356,18 +1357,19 @@ window.hideLoading = function() {
 function renderReports() {
     const reportContainer = document.getElementById('view-reports');
     
-    const statusCounts = items.reduce((acc, curr) => {
+    const liveItems = items.filter(i => !i.isRTV);
+    const statusCounts = liveItems.reduce((acc, curr) => {
         acc[curr.status] = (acc[curr.status] || 0) + 1;
         return acc;
     }, { 'Active': 0, 'Expiring': 0, 'Expired': 0 });
 
-    const categoryCounts = items.reduce((acc, curr) => {
+    const categoryCounts = liveItems.reduce((acc, curr) => {
         const cat = curr.category || 'Uncategorized';
         acc[cat] = (acc[cat] || 0) + 1;
         return acc;
     }, {});
 
-    const totalQty = items.reduce((sum, i) => sum + (Number(i.qty) || 0), 0);
+    const totalQty = liveItems.reduce((sum, i) => sum + (Number(i.qty) || 0), 0);
 
     reportContainer.innerHTML = `
         <div class="flex flex-col gap-8">
@@ -1384,7 +1386,7 @@ function renderReports() {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
                     <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Stock Items</p>
-                    <p class="text-3xl font-black text-gray-900">${items.length}</p>
+                    <p class="text-3xl font-black text-gray-900">${liveItems.length}</p>
                 </div>
                 <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
                     <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Quantity</p>
@@ -1403,7 +1405,7 @@ function renderReports() {
                     </h3>
                     <div class="space-y-6">
                         ${Object.entries(categoryCounts).map(([cat, count]) => {
-                            const percentage = ((count / items.length) * 100).toFixed(0);
+                            const percentage = liveItems.length > 0 ? ((count / liveItems.length) * 100).toFixed(0) : 0;
                             return `
                             <div>
                                 <div class="flex justify-between text-sm mb-2">
