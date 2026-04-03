@@ -427,7 +427,7 @@ function renderDashboard() {
             const targetYear = d.getFullYear();
 
             const count = items.filter(item => {
-                if (!item.expiryDate || item.qty <= 0) return false;
+                if (!item.expiryDate || item.isRTV) return false;
                 // Split date string manually to avoid timezone/UTC parsing shifts
                 const [y, m] = item.expiryDate.split('-').map(Number);
                 return (m - 1) === targetMonth && y === targetYear;
@@ -919,7 +919,7 @@ window.bulkDelete = async function() {
 window.bulkRTV = async function() {
     if (selectedItemIds.size === 0) return;
 
-    if (confirm(`Process RTV (Return to Vendor) for ${selectedItemIds.size} selected items?\nThis will record the return and set quantity to 0 for all.`)) {
+    if (confirm(`Process RTV (Return to Vendor) for ${selectedItemIds.size} selected items?\nThis will move them to History while retaining their current quantity.`)) {
         const timestamp = new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         
         // Save current state for Undo feature
@@ -1124,7 +1124,7 @@ window.handleRTV = async function(id) {
     const item = items.find(i => i.id === id);
     if (!item) return;
 
-    if (confirm(`Process RTV (Return to Vendor) for ${item.description}?\nThis will record the return and set quantity to 0.`)) {
+    if (confirm(`Process RTV (Return to Vendor) for ${item.description}?\nThis will move it to History while retaining its current quantity.`)) {
         const timestamp = new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         
         // Save current state for Undo feature
