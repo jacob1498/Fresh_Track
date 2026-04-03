@@ -1,10 +1,10 @@
 // Define the original sample data as a constant
 const SAMPLE_ITEMS = [
-    { id: 1, location: 'Warehouse A', itemCode: 'MK-001', description: 'Milk 1L', qty: 12, expiryDate: '2023-10-01', status: 'Expired', history: 'Initial Stock', category: 'Dairy', returnType: 'Non-Returnable', supplierName: 'Dairy Farms Ltd' },
-    { id: 2, location: 'Fridge 02', itemCode: 'EG-122', description: 'Eggs 12pk', qty: 24, expiryDate: '2023-12-15', status: 'Active', history: 'Restocked', category: 'Dairy', returnType: 'Returnable', supplierName: 'AgriCorp' },
-    { id: 3, location: 'Bakery Shelf', itemCode: 'BR-990', description: 'Whole Wheat Bread', qty: 5, expiryDate: '2023-10-25', status: 'Expiring', history: 'Initial Stock', category: 'Bakery', returnType: 'Non-Returnable', supplierName: 'SunBake Co' },
-    { id: 4, location: 'Produce Aisle', itemCode: 'AP-552', description: 'Red Apples 1kg', qty: 50, expiryDate: '2023-11-05', status: 'Active', history: 'New Shipment', category: 'Produce', returnType: 'Returnable', supplierName: 'FreshProduce Inc' },
-    { id: 5, location: 'Freezer 01', itemCode: 'CH-221', description: 'Chicken Breast 500g', qty: 15, expiryDate: '2023-10-20', status: 'Expiring', history: 'Manual Update', category: 'Meat', returnType: 'Non-Returnable', supplierName: 'MeatMaster' }
+    { id: 1, location: 'Warehouse A', itemCode: 'MK-001', description: 'Milk 1L', qty: 12, expiryDate: '2025-10-01', status: 'Active', history: 'Initial Stock', category: 'Dairy', returnType: 'Non-Returnable', supplierName: 'Dairy Farms Ltd' },
+    { id: 2, location: 'Fridge 02', itemCode: 'EG-122', description: 'Eggs 12pk', qty: 24, expiryDate: '2025-12-15', status: 'Active', history: 'Restocked', category: 'Dairy', returnType: 'Returnable', supplierName: 'AgriCorp' },
+    { id: 3, location: 'Bakery Shelf', itemCode: 'BR-990', description: 'Whole Wheat Bread', qty: 5, expiryDate: '2025-06-25', status: 'Active', history: 'Initial Stock', category: 'Bakery', returnType: 'Non-Returnable', supplierName: 'SunBake Co' },
+    { id: 4, location: 'Produce Aisle', itemCode: 'AP-552', description: 'Red Apples 1kg', qty: 50, expiryDate: '2025-11-05', status: 'Active', history: 'New Shipment', category: 'Produce', returnType: 'Returnable', supplierName: 'FreshProduce Inc' },
+    { id: 5, location: 'Freezer 01', itemCode: 'CH-221', description: 'Chicken Breast 500g', qty: 15, expiryDate: '2025-08-20', status: 'Active', history: 'Manual Update', category: 'Meat', returnType: 'Non-Returnable', supplierName: 'MeatMaster' }
 ];
 
 // Default System Credentials
@@ -31,6 +31,8 @@ let items = [];
 // Global Search and Filter State
 let searchTerm = '';
 let statusFilter = 'All';
+let returnTypeFilter = 'All';
+let listTab = 'inventory'; 
 let startDateFilter = '';
 let endDateFilter = '';
 let sortColumn = 'expiryDate';
@@ -39,6 +41,7 @@ let selectedItemIds = new Set();
 let focusedIndex = -1;
 let currentPage = 1;
 let rowsPerPage = 25;
+let lastActionState = null;
 
 let calcActiveItemId = null;
 let calcInputValue = '0';
@@ -329,6 +332,60 @@ function renderDashboard() {
         </div>
     `;
 
+    // Return Type Summary
+    const rtSummary = document.getElementById('return-type-summary');
+    if (rtSummary) {
+        const rt = items.reduce((acc, curr) => {
+            const type = curr.returnType?.toLowerCase() || '';
+            if (type.includes('non-returnable')) acc.nr++;
+            else if (type.includes('returnable')) acc.ret++;
+            else if (type.includes('transfer')) acc.tr++;
+            else acc.other++;
+            return acc;
+        }, { nr: 0, ret: 0, tr: 0, other: 0 });
+
+        const getRtWidth = (count) => totalCount > 0 ? (count / totalCount) * 100 : 0;
+
+        rtSummary.innerHTML = `
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-lg bg-red-50 text-red-600 flex items-center justify-center font-black text-[10px] border border-red-100">NR</div>
+                <div class="flex-1">
+                    <div class="flex justify-between text-[10px] font-black text-gray-400 uppercase mb-1">
+                        <span>Non-Returnable</span>
+                        <span>${rt.nr}</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                        <div class="bg-red-500 h-full transition-all duration-1000" style="width: ${getRtWidth(rt.nr)}%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-lg bg-green-50 text-green-600 flex items-center justify-center font-black text-[10px] border border-green-100">Ret</div>
+                <div class="flex-1">
+                    <div class="flex justify-between text-[10px] font-black text-gray-400 uppercase mb-1">
+                        <span>Returnable</span>
+                        <span>${rt.ret}</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                        <div class="bg-green-500 h-full transition-all duration-1000" style="width: ${getRtWidth(rt.ret)}%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-black text-[10px] border border-blue-100">TR</div>
+                <div class="flex-1">
+                    <div class="flex justify-between text-[10px] font-black text-gray-400 uppercase mb-1">
+                        <span>Transfer</span>
+                        <span>${rt.tr}</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                        <div class="bg-blue-500 h-full transition-all duration-1000" style="width: ${getRtWidth(rt.tr)}%"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     const list = document.getElementById('expiring-soon-list');
     const expiringItems = items.filter(i => i.status === 'Expiring').slice(0, 5);
 
@@ -356,6 +413,45 @@ function renderDashboard() {
             `;
         }).join('');
     }
+
+    // 12-Month Expiration Forecast Chart
+    const forecastContainer = document.getElementById('expiration-forecast');
+    if (forecastContainer) {
+        const forecastData = [];
+        const now = new Date();
+        for (let i = 0; i < 12; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+            const monthLabel = d.toLocaleString('default', { month: 'short' });
+            const targetMonth = d.getMonth();
+            const targetYear = d.getFullYear();
+
+            const count = items.filter(item => {
+                if (!item.expiryDate || item.qty <= 0) return false;
+                // Split date string manually to avoid timezone/UTC parsing shifts
+                const [y, m] = item.expiryDate.split('-').map(Number);
+                return (m - 1) === targetMonth && y === targetYear;
+            }).length;
+
+            forecastData.push({ label: monthLabel, count });
+        }
+
+        const maxVal = Math.max(...forecastData.map(d => d.count), 1);
+        forecastContainer.innerHTML = `
+            <h3 class="text-sm font-black text-gray-400 uppercase tracking-widest mb-6">12-Month Expiration Forecast</h3>
+            <div class="flex items-end justify-between gap-1 h-32 md:h-40 px-2">
+                ${forecastData.map(d => `
+                    <div class="flex-1 flex flex-col items-center gap-2 group">
+                        <div class="relative w-full flex justify-center items-end h-full">
+                            <div class="absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[9px] px-2 py-1 rounded font-bold z-10 whitespace-nowrap shadow-xl border border-slate-700">${d.count} items</div>
+                            <div class="w-full max-w-[24px] bg-indigo-500/5 rounded-t-sm h-full"></div>
+                            <div class="absolute bottom-0 w-full max-w-[24px] bg-indigo-600 rounded-t-sm transition-all duration-1000 ease-out group-hover:bg-indigo-400" style="height: ${(d.count / maxVal) * 100}%"></div>
+                        </div>
+                        <span class="text-[8px] md:text-[10px] font-bold text-gray-400 uppercase tracking-tighter">${d.label}</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
 }
 
 // Centralized logic for processing items for the list view
@@ -364,13 +460,24 @@ function getProcessedItems() {
     refreshItemStatuses(true); // Don't trigger a cloud save during a simple list refresh
 
     const filtered = items.filter(i => {
+        const isRTV = i.qty === 0 && (i.history || '').includes('RTV');
+        const matchesTab = listTab === 'inventory' ? !isRTV : isRTV;
+        if (!matchesTab) return false;
+
         const matchesSearch = i.itemCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
                              i.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                              (i.category && i.category.toLowerCase().includes(searchTerm.toLowerCase()));
         const matchesStatus = statusFilter === 'All' || i.status === statusFilter;
+        
+        const rt = i.returnType?.toLowerCase() || '';
+        const matchesReturnType = returnTypeFilter === 'All' || 
+                                (returnTypeFilter === 'NR' && rt.includes('non-returnable')) ||
+                                (returnTypeFilter === 'Ret' && rt.includes('returnable') && !rt.includes('non-returnable')) ||
+                                (returnTypeFilter === 'TR' && rt.includes('transfer'));
+
         const matchesDate = (!startDateFilter || i.expiryDate >= startDateFilter) && 
                            (!endDateFilter || i.expiryDate <= endDateFilter);
-        return matchesSearch && matchesStatus && matchesDate;
+        return matchesSearch && matchesStatus && matchesReturnType && matchesDate;
     });
 
     return filtered.sort((a, b) => {
@@ -388,6 +495,9 @@ function getProcessedItems() {
 function renderList() {
     const listContainer = document.getElementById('view-list');
     const filteredItems = getProcessedItems();
+
+    const activeCount = items.filter(i => !(i.qty === 0 && (i.history || '').includes('RTV'))).length;
+    const rtvCount = items.filter(i => i.qty === 0 && (i.history || '').includes('RTV')).length;
 
     // Store current search focus and cursor position before re-rendering
     const searchInput = document.getElementById('inventory-search');
@@ -413,13 +523,32 @@ function renderList() {
     const allFilteredSelected = filteredItems.length > 0 && filteredItems.every(i => selectedItemIds.has(i.id));
 
     listContainer.innerHTML = `
+        <!-- Segmented Control Tabs -->
+        <div class="flex items-center gap-1 bg-gray-200/40 p-1.5 rounded-2xl mb-6 w-full md:w-fit border border-gray-100 shadow-inner">
+            <button onclick="switchListTab('inventory')" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${listTab === 'inventory' ? 'bg-white text-indigo-600 shadow-md' : 'text-gray-500 hover:text-gray-700'}">
+                <i class="fas fa-boxes-stacked ${listTab === 'inventory' ? 'text-indigo-500' : 'text-gray-400'}"></i>
+                <span>Active Stock <span class="opacity-50 ml-1">(${activeCount})</span></span>
+            </button>
+            <button onclick="switchListTab('rtv')" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${listTab === 'rtv' ? 'bg-white text-indigo-600 shadow-md' : 'text-gray-500 hover:text-gray-700'}">
+                <i class="fas fa-history ${listTab === 'rtv' ? 'text-indigo-500' : 'text-gray-400'}"></i>
+                <span>RTV History <span class="opacity-50 ml-1">(${rtvCount})</span></span>
+            </button>
+        </div>
+
         <div class="flex flex-col gap-4 mb-6">
             <div class="flex justify-between items-center">
-                <h3 class="text-xl font-black text-gray-900">Inventory</h3>
+                <h3 class="text-xl font-black text-gray-900">${listTab === 'inventory' ? 'Inventory' : 'RTV History Logs'}</h3>
                 ${selectedItemIds.size > 0 ? `
-                    <button onclick="bulkDelete()" class="bg-red-50 border border-red-200 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100 transition whitespace-nowrap animate-fadeIn">
-                        <i class="fas fa-trash-alt mr-1"></i> Delete ${selectedItemIds.size}
-                    </button>
+                    <div class="flex gap-2">
+                        ${listTab === 'inventory' ? `
+                            <button onclick="bulkRTV()" class="bg-amber-50 border border-amber-200 text-amber-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-amber-100 transition whitespace-nowrap animate-fadeIn">
+                                <i class="fas fa-truck-ramp-box mr-1"></i> RTV ${selectedItemIds.size}
+                            </button>
+                        ` : ''}
+                        <button onclick="bulkDelete()" class="bg-red-50 border border-red-200 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100 transition whitespace-nowrap animate-fadeIn">
+                            <i class="fas fa-trash-alt mr-1"></i> Delete ${selectedItemIds.size}
+                        </button>
+                    </div>
                 ` : ''}
             </div>
 
@@ -441,6 +570,13 @@ function renderList() {
                         <option value="Active" ${statusFilter === 'Active' ? 'selected' : ''}>Active</option>
                         <option value="Expiring" ${statusFilter === 'Expiring' ? 'selected' : ''}>Expiring</option>
                         <option value="Expired" ${statusFilter === 'Expired' ? 'selected' : ''}>Expired</option>
+                    </select>
+
+                    <select onchange="handleReturnTypeFilter(this.value)" class="flex-1 md:flex-none px-4 py-3 md:py-2 border border-gray-200 rounded-xl md:rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-gray-700 cursor-pointer transition shadow-sm md:shadow-none min-w-[120px]">
+                        <option value="All" ${returnTypeFilter === 'All' ? 'selected' : ''}>All Types</option>
+                        <option value="NR" ${returnTypeFilter === 'NR' ? 'selected' : ''}>NR (Non-Ret)</option>
+                        <option value="Ret" ${returnTypeFilter === 'Ret' ? 'selected' : ''}>Ret (Returnable)</option>
+                        <option value="TR" ${returnTypeFilter === 'TR' ? 'selected' : ''}>TR (Transfer)</option>
                     </select>
 
                     <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-xl md:rounded-lg px-3 shadow-sm md:shadow-none flex-1 md:flex-none">
@@ -516,6 +652,7 @@ function renderList() {
                                 <td class="px-4 py-1.5 text-center">
                                     <div class="flex justify-center gap-2">
                                         <button onclick="openEditModal(${i.id})" class="p-1 text-gray-400 hover:text-indigo-600 transition"><i class="fas fa-edit"></i></button>
+                                        ${listTab === 'inventory' ? `<button onclick="handleRTV(${i.id})" class="p-1 text-gray-400 hover:text-amber-600 transition" title="Return to Vendor"><i class="fas fa-truck-ramp-box"></i></button>` : ''}
                                         <button onclick="deleteItem(${i.id})" class="p-1 text-gray-400 hover:text-red-600 transition"><i class="fas fa-trash"></i></button>
                                     </div>
                                 </td>
@@ -530,11 +667,16 @@ function renderList() {
             </div>` : `
             <div class="divide-y divide-gray-100">
                 ${paginatedItems.map(i => `
-                    <div class="p-4 flex flex-col gap-3 active:bg-gray-50 transition" onclick="setFocus(0, ${i.id}, event)">
+                    <div class="p-4 flex flex-col gap-3 active:bg-gray-50 transition ${selectedItemIds.has(i.id) ? 'bg-indigo-50/70 border-l-4 border-indigo-600 shadow-sm' : ''}" onclick="setFocus(0, ${i.id}, event)">
                         <div class="flex justify-between items-start">
-                            <div class="flex flex-col">
-                                <span class="text-xs font-mono text-indigo-600 font-bold">${i.itemCode}</span>
-                                <span class="font-bold text-gray-800">${i.description}</span>
+                            <div class="flex items-center gap-3">
+                                <div class="w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${selectedItemIds.has(i.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-gray-200 bg-white'}">
+                                    ${selectedItemIds.has(i.id) ? '<i class="fas fa-check text-[10px]"></i>' : ''}
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-mono text-indigo-600 font-bold">${i.itemCode}</span>
+                                    <span class="font-bold text-gray-800">${i.description}</span>
+                                </div>
                             </div>
                             <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter ${
                                 i.status === 'Expired' ? 'bg-red-100 text-red-700' : 
@@ -542,8 +684,21 @@ function renderList() {
                             }">${i.status}</span>
                         </div>
                         <div class="flex justify-between items-center text-xs text-gray-500">
-                            <span><i class="fas fa-map-marker-alt mr-1"></i> ${i.location}</span>
-                            <span class="font-bold text-gray-700">Expires: ${i.expiryDate}</span>
+                            <div class="flex items-center gap-2">
+                                <span><i class="fas fa-map-marker-alt mr-1"></i> ${i.location}</span>
+                                ${(() => {
+                                    const rt = i.returnType?.toLowerCase() || '';
+                                    const isNR = rt.includes('non-returnable');
+                                    const isRet = rt.includes('returnable');
+                                    const isTR = rt.includes('transfer');
+                                    const badgeText = isNR ? 'NR' : isRet ? 'Ret' : isTR ? 'TR' : (i.returnType?.substring(0, 2).toUpperCase() || '--');
+                                    const colorClass = isNR ? 'bg-red-50 text-red-600 border-red-100' : 
+                                                       isRet ? 'bg-green-50 text-green-600 border-green-100' : 
+                                                       isTR ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-gray-100 text-gray-500 border-gray-200';
+                                    return `<span class="${colorClass} px-1.5 py-0.5 rounded text-[9px] font-black border uppercase tracking-tighter" title="${i.returnType || 'No Type'}">${badgeText}</span>`;
+                                })()}
+                            </div>
+                            <span class="font-bold text-gray-700">Exp: ${i.expiryDate}</span>
                         </div>
                         <div class="flex justify-between items-center pt-2">
                             <button onclick="openQtyCalc(${i.id})" class="px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg font-bold text-sm">
@@ -551,6 +706,7 @@ function renderList() {
                             </button>
                             <div class="flex gap-4">
                                 <button onclick="openEditModal(${i.id})" class="text-gray-400 p-2"><i class="fas fa-edit"></i></button>
+                                ${listTab === 'inventory' ? `<button onclick="handleRTV(${i.id})" class="text-amber-500 p-2"><i class="fas fa-truck-ramp-box"></i></button>` : ''}
                                 <button onclick="deleteItem(${i.id})" class="text-red-400 p-2"><i class="fas fa-trash"></i></button>
                             </div>
                         </div>
@@ -652,6 +808,12 @@ window.handleSearch = function(val) {
     renderList();
 };
 
+window.handleReturnTypeFilter = function(val) {
+    returnTypeFilter = val;
+    currentPage = 1;
+    renderList();
+};
+
 // Keyboard Navigation Logic
 window.addEventListener('keydown', (e) => {
     const listView = document.getElementById('view-list');
@@ -708,21 +870,20 @@ window.handleDateFilter = function(type, val) {
 };
 
 window.toggleSelectAll = function(isChecked) {
-    const filteredItems = items.filter(i => {
-        const matchesSearch = i.itemCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                             i.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                             (i.category && i.category.toLowerCase().includes(searchTerm.toLowerCase()));
-        const matchesStatus = statusFilter === 'All' || i.status === statusFilter;
-        const matchesDate = (!startDateFilter || i.expiryDate >= startDateFilter) && 
-                           (!endDateFilter || i.expiryDate <= endDateFilter);
-        return matchesSearch && matchesStatus && matchesDate;
-    });
-
+    const filteredItems = getProcessedItems();
+    
     if (isChecked) {
         filteredItems.forEach(i => selectedItemIds.add(i.id));
     } else {
         filteredItems.forEach(i => selectedItemIds.delete(i.id));
     }
+    renderList();
+};
+
+window.switchListTab = function(tab) {
+    listTab = tab;
+    currentPage = 1;
+    selectedItemIds.clear(); // Clear selection when switching tabs
     renderList();
 };
 
@@ -751,6 +912,35 @@ window.bulkDelete = async function() {
         }
 
         renderList();
+    }
+};
+
+window.bulkRTV = async function() {
+    if (selectedItemIds.size === 0) return;
+
+    if (confirm(`Process RTV (Return to Vendor) for ${selectedItemIds.size} selected items?\nThis will record the return and set quantity to 0 for all.`)) {
+        const timestamp = new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        
+        // Save current state for Undo feature
+        lastActionState = items
+            .filter(i => selectedItemIds.has(i.id))
+            .map(i => ({ id: i.id, qty: i.qty, history: i.history }));
+
+        items = items.map(i => {
+            if (selectedItemIds.has(i.id)) {
+                return { 
+                    ...i, 
+                    qty: 0, 
+                    history: `Bulk RTV Processed (${timestamp})`
+                };
+            }
+            return i;
+        });
+
+        selectedItemIds.clear();
+        await saveItems();
+        renderList();
+        showUndoNotification(`Processed Bulk RTV for ${lastActionState.length} items`);
     }
 };
 
@@ -927,6 +1117,86 @@ window.deleteItem = async function(id) {
 
         renderList();
     }
+};
+
+window.handleRTV = async function(id) {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+
+    if (confirm(`Process RTV (Return to Vendor) for ${item.description}?\nThis will record the return and set quantity to 0.`)) {
+        const timestamp = new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        
+        // Save current state for Undo feature
+        lastActionState = [{ id: item.id, qty: item.qty, history: item.history }];
+
+        items = items.map(i => {
+            if (i.id === id) {
+                return { 
+                    ...i, 
+                    qty: 0, 
+                    history: `RTV Processed (${timestamp})`
+                };
+            }
+            return i;
+        });
+
+        await saveItems();
+        renderList();
+        showUndoNotification(`Processed RTV for ${item.description}`);
+    }
+};
+
+window.undoAction = async function() {
+    if (!lastActionState) return;
+
+    items = items.map(i => {
+        const prevState = lastActionState.find(s => s.id === i.id);
+        if (prevState) {
+            return { ...i, qty: prevState.qty, history: prevState.history };
+        }
+        return i;
+    });
+
+    lastActionState = null;
+    hideUndoNotification();
+    await saveItems();
+    renderList();
+};
+
+function showUndoNotification(message) {
+    let notify = document.getElementById('undo-notification');
+    if (!notify) {
+        notify = document.createElement('div');
+        notify.id = 'undo-notification';
+        notify.className = 'fixed bottom-24 left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 z-[60] bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center justify-between gap-4 animate-popIn border border-slate-700';
+        document.body.appendChild(notify);
+    }
+    
+    notify.innerHTML = `
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center shrink-0">
+                <i class="fas fa-truck-ramp-box text-xs"></i>
+            </div>
+            <div class="flex flex-col">
+                <span class="text-[11px] font-bold leading-tight line-clamp-1">${message}</span>
+                <span class="text-[9px] text-slate-400 uppercase tracking-widest">Inventory updated</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="h-6 w-px bg-slate-800"></div>
+            <button onclick="undoAction()" class="text-indigo-400 hover:text-indigo-300 text-[10px] font-black uppercase tracking-widest transition-colors whitespace-nowrap">Undo Action</button>
+        </div>
+    `;
+    
+    notify.classList.remove('hidden');
+    if (window.undoTimeout) clearTimeout(window.undoTimeout);
+    window.undoTimeout = setTimeout(() => hideUndoNotification(), 8000);
+}
+
+window.hideUndoNotification = function() {
+    const notify = document.getElementById('undo-notification');
+    if (notify) notify.classList.add('hidden');
+    lastActionState = null;
 };
 
 window.handleStatusFilter = function(val) {
