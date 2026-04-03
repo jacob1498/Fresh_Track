@@ -1346,6 +1346,43 @@ window.exportToCSV = function() {
     }, 1000);
 };
 
+window.exportRTVToCSV = function() {
+    const rtvItems = items.filter(i => i.isRTV);
+    if (rtvItems.length === 0) {
+        alert("No RTV data available to export.");
+        return;
+    }
+
+    showLoading("Generating RTV Export Report...");
+
+    setTimeout(() => {
+    const headers = ["Location", "ItemCode", "Description", "Qty", "ExpiryDate", "History", "Category", "ReturnType", "SupplierName"];
+    const rows = rtvItems.map(i => [
+        i.location, 
+        i.itemCode, 
+        i.description, 
+        i.qty, 
+        i.expiryDate, 
+        i.history,
+        i.category || 'N/A', 
+        i.returnType || 'N/A', 
+        i.supplierName || 'N/A'
+    ].map(field => `"${String(field).replace(/"/g, '""')}"`).join(','));
+    
+    const csvContent = headers.join(',') + '\n' + rows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `freshtrack_rtv_history_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+        hideLoading();
+    }, 1000);
+};
+
 window.showLoading = function(text = "Processing Data") {
     const overlay = document.getElementById('loading-overlay');
     const textEl = document.getElementById('loading-text');
@@ -1384,9 +1421,14 @@ function renderReports() {
                     <h3 class="text-2xl font-black text-gray-900">Inventory Analytics</h3>
                     <p class="text-gray-500">Overview of stock health and categorization.</p>
                 </div>
-                <button onclick="exportToCSV()" class="bg-green-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-700 transition shadow-lg shadow-green-100 flex items-center gap-2">
-                    <i class="fas fa-file-csv text-xl"></i> Export Full Report
-                </button>
+                <div class="flex flex-wrap gap-3">
+                    <button onclick="exportRTVToCSV()" class="bg-amber-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-amber-700 transition shadow-lg shadow-amber-100 flex items-center gap-2">
+                        <i class="fas fa-truck-ramp-box text-xl"></i> Export RTV History
+                    </button>
+                    <button onclick="exportToCSV()" class="bg-green-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-700 transition shadow-lg shadow-green-100 flex items-center gap-2">
+                        <i class="fas fa-file-csv text-xl"></i> Export Full Report
+                    </button>
+                </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
