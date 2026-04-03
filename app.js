@@ -667,8 +667,8 @@ function renderList() {
                 </table>
             </div>` : `
             <div class="divide-y divide-gray-100">
-                ${paginatedItems.map(i => `
-                    <div class="p-4 flex flex-col gap-3 active:bg-gray-50 transition ${selectedItemIds.has(i.id) ? 'bg-indigo-50/70 border-l-4 border-indigo-600 shadow-sm' : ''}" onclick="setFocus(0, ${i.id}, event)">
+                ${paginatedItems.map((i, pIndex) => `
+                    <div class="p-4 flex flex-col gap-3 active:bg-gray-50 transition ${selectedItemIds.has(i.id) ? 'bg-indigo-50/70 border-l-4 border-indigo-600 shadow-sm' : ''}" onclick="setFocus(${startIdx + pIndex}, ${i.id}, event)">
                         <div class="flex justify-between items-start">
                             <div class="flex items-center gap-3">
                                 <div class="w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${selectedItemIds.has(i.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-gray-200 bg-white'}">
@@ -889,10 +889,13 @@ window.switchListTab = function(tab) {
 };
 
 window.toggleSelectItem = function(id) {
-    if (selectedItemIds.has(id)) {
-        selectedItemIds.delete(id);
+    // Ensure ID is handled consistently (Number vs String)
+    const targetId = typeof id === 'string' && !isNaN(id) ? Number(id) : id;
+    
+    if (selectedItemIds.has(targetId)) {
+        selectedItemIds.delete(targetId);
     } else {
-        selectedItemIds.add(id);
+        selectedItemIds.add(targetId);
     }
     renderList();
 };
@@ -923,9 +926,12 @@ window.bulkRTV = async function() {
         const timestamp = new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         
         // Save current state for Undo feature
+        const selectedIdsArray = Array.from(selectedItemIds);
         lastActionState = items
-            .filter(i => selectedItemIds.has(i.id))
+            .filter(i => selectedIdsArray.includes(i.id))
             .map(i => ({ id: i.id, isRTV: i.isRTV, history: i.history }));
+
+        const processedCount = lastActionState.length;
 
         items = items.map(i => {
             if (selectedItemIds.has(i.id)) {
@@ -941,7 +947,7 @@ window.bulkRTV = async function() {
         selectedItemIds.clear();
         await saveItems();
         renderList();
-        showUndoNotification(`Processed Bulk RTV for ${lastActionState.length} items`);
+        showUndoNotification(`Processed Bulk RTV for ${processedCount} items`);
     }
 };
 
