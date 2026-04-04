@@ -1,12 +1,10 @@
 // Define the original sample data as a constant
 const SAMPLE_ITEMS = [
-    { id: 's-1', location: 'Warehouse A', itemCode: 'MK-001', description: 'Milk 1L', qty: 12, expiryDate: '2024-03-15', status: 'Active', history: 'Initial Stock', category: 'Dairy', returnType: 'Non-Returnable', supplierName: 'Dairy Farms Ltd' },
-    { id: 's-2', location: 'Fridge 02', itemCode: 'EG-122', description: 'Eggs 12pk', qty: 24, expiryDate: '2024-05-20', status: 'Active', history: 'Restocked', category: 'Dairy', returnType: 'Returnable', supplierName: 'AgriCorp' },
-    { id: 's-3', location: 'Bakery Shelf', itemCode: 'BR-990', description: 'Whole Wheat Bread', qty: 5, expiryDate: '2024-01-28', status: 'Active', history: 'Initial Stock', category: 'Bakery', returnType: 'Non-Returnable', supplierName: 'SunBake Co' },
-    { id: 's-4', location: 'Produce Aisle', itemCode: 'AP-552', description: 'Red Apples 1kg', qty: 50, expiryDate: '2024-07-10', status: 'Active', history: 'New Shipment', category: 'Produce', returnType: 'Returnable', supplierName: 'FreshProduce Inc' },
-    { id: 's-5', location: 'Freezer 01', itemCode: 'CH-221', description: 'Chicken Breast 500g', qty: 15, expiryDate: '2024-09-01', status: 'Active', history: 'Manual Update', category: 'Meat', returnType: 'Non-Returnable', supplierName: 'MeatMaster' },
-    { id: 's-6', location: 'Pantry', itemCode: 'PA-001', description: 'Pasta 500g', qty: 30, expiryDate: '2025-02-10', status: 'Active', history: 'Initial Stock', category: 'Dry Goods', returnType: 'Non-Returnable', supplierName: 'GrainCo' },
-    { id: 's-7', location: 'Warehouse B', itemCode: 'CO-002', description: 'Coffee Beans 1kg', qty: 10, expiryDate: '2024-04-05', status: 'Active', history: 'New Order', category: 'Beverages', returnType: 'Non-Returnable', supplierName: 'BeanSuppliers' }
+    { id: 1, location: 'Warehouse A', itemCode: 'MK-001', description: 'Milk 1L', qty: 12, expiryDate: '2025-10-01', status: 'Active', history: 'Initial Stock', category: 'Dairy', returnType: 'Non-Returnable', supplierName: 'Dairy Farms Ltd' },
+    { id: 2, location: 'Fridge 02', itemCode: 'EG-122', description: 'Eggs 12pk', qty: 24, expiryDate: '2025-12-15', status: 'Active', history: 'Restocked', category: 'Dairy', returnType: 'Returnable', supplierName: 'AgriCorp' },
+    { id: 3, location: 'Bakery Shelf', itemCode: 'BR-990', description: 'Whole Wheat Bread', qty: 5, expiryDate: '2025-06-25', status: 'Active', history: 'Initial Stock', category: 'Bakery', returnType: 'Non-Returnable', supplierName: 'SunBake Co' },
+    { id: 4, location: 'Produce Aisle', itemCode: 'AP-552', description: 'Red Apples 1kg', qty: 50, expiryDate: '2025-11-05', status: 'Active', history: 'New Shipment', category: 'Produce', returnType: 'Returnable', supplierName: 'FreshProduce Inc' },
+    { id: 5, location: 'Freezer 01', itemCode: 'CH-221', description: 'Chicken Breast 500g', qty: 15, expiryDate: '2025-08-20', status: 'Active', history: 'Manual Update', category: 'Meat', returnType: 'Non-Returnable', supplierName: 'MeatMaster' }
 ];
 
 // Default System Credentials
@@ -28,7 +26,7 @@ let isSyncing = false;
 let fabMenuOpen = false;
 
 // Mock Data
-let items = JSON.parse(localStorage.getItem('ft_inventory_data')) || []; // Starts empty, no auto-inject
+let items = [];
 
 // Global Search and Filter State
 let searchTerm = '';
@@ -74,17 +72,9 @@ async function fetchCloudData(silent = false) {
     if (!silent) showLoading("Syncing with Cloud...");
     
     try {
-        // Fetch from both active inventory and RTV history tables
-        const [invResp, rtvResp] = await Promise.all([
-            supabaseClient.from('inventory').select('*'),
-            supabaseClient.from('rtv_history').select('*')
-        ]);
-
-        if (!invResp.error && !rtvResp.error) {
-            const invData = invResp.data || [];
-            const rtvData = (rtvResp.data || []).map(item => ({ ...item, isRTV: true }));
-            
-            items = [...invData, ...rtvData];
+        const { data, error } = await supabaseClient.from('inventory').select('*');
+        if (!error && data) {
+            items = data;
             localStorage.setItem('ft_inventory_data', JSON.stringify(items));
             
             // Refresh statuses and re-render the view if it's the dashboard or list
@@ -145,22 +135,11 @@ async function saveItems() {
 
     // 2. Sync to Cloud if Supabase is initialized
     if (supabaseClient) {
-        const inventoryItems = items.filter(i => !i.isRTV);
-        const rtvItems = items.filter(i => i.isRTV);
-
-        // Sync Active Inventory
-        if (inventoryItems.length > 0) {
-            await supabaseClient.from('inventory').upsert(inventoryItems, { onConflict: 'id' });
-        }
-
-        // Sync RTV History Table
-        if (rtvItems.length > 0) {
-            await supabaseClient.from('rtv_history').upsert(rtvItems, { onConflict: 'id' });
-            
-            // Clean up: If items were moved to RTV, remove them from the active inventory table
-            const rtvIds = rtvItems.map(i => i.id);
-            await supabaseClient.from('inventory').delete().in('id', rtvIds);
-        }
+        const { error } = await supabaseClient
+            .from('inventory')
+            .upsert(items, { onConflict: 'id' });
+        
+        if (error) console.error("Cloud Sync Error:", error.message);
     }
 }
 
@@ -409,7 +388,7 @@ function renderDashboard() {
     }
 
     const list = document.getElementById('expiring-soon-list');
-    const expiringItems = items.filter(i => i.status === 'Expiring').slice(0, 3);
+    const expiringItems = items.filter(i => i.status === 'Expiring').slice(0, 5);
 
     if (expiringItems.length === 0) {
         list.innerHTML = `<div class="py-8 text-center text-gray-400 italic text-sm">No items expiring soon.</div>`;
@@ -417,19 +396,19 @@ function renderDashboard() {
         list.innerHTML = expiringItems.map(i => {
             const diffDays = Math.ceil((new Date(i.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
             return `
-                <div class="flex justify-between items-center p-4 bg-gray-50/50 hover:bg-orange-50 rounded-xl border border-transparent hover:border-orange-100 transition-all group">
-                    <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 rounded-lg bg-white border border-gray-100 flex items-center justify-center text-orange-500 shadow-sm">
-                            <i class="fas fa-box-open"></i>
+                <div class="flex justify-between items-center p-2.5 bg-gray-50/50 hover:bg-orange-50 rounded-lg border border-transparent hover:border-orange-100 transition-all group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center text-orange-500 shadow-sm">
+                            <i class="fas fa-box-open text-xs"></i>
                         </div>
-                        <div class="flex flex-col">
-                            <span class="font-bold text-gray-800 group-hover:text-orange-900 transition-colors">${i.description}</span>
-                            <span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">${i.category} • ${i.itemCode}</span>
+                        <div class="flex flex-col overflow-hidden">
+                            <span class="text-sm font-bold text-gray-800 group-hover:text-orange-900 transition-colors truncate">${i.description}</span>
+                            <span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest truncate">${i.category} • ${i.itemCode}</span>
                         </div>
                     </div>
-                    <div class="text-right">
-                        <div class="text-xs font-black text-orange-600 uppercase tracking-tighter">${i.expiryDate}</div>
-                        <div class="text-[9px] text-gray-400 font-medium">${diffDays > 0 ? `Expires in ${diffDays} days` : 'Expires today'}</div>
+                    <div class="text-right shrink-0">
+                        <div class="text-[10px] font-black text-orange-600 uppercase tracking-tighter">${i.expiryDate}</div>
+                        <div class="text-[8px] text-gray-400 font-medium">${diffDays > 0 ? `${diffDays}d left` : 'Today'}</div>
                     </div>
                 </div>
             `;
@@ -454,36 +433,23 @@ function renderDashboard() {
                 return (m - 1) === targetMonth && y === targetYear;
             }).length;
 
-            forecastData.push({ label: monthLabel, count, month: targetMonth, year: targetYear });
+            forecastData.push({ label: monthLabel, count });
         }
 
         forecastContainer.innerHTML = `
-            <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">12-Month Expiration Forecast</h3>
-            <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+            <h3 class="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">12-Month Expiration Forecast</h3>
+            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                 ${forecastData.map(d => `
-                    <div onclick="filterByForecastMonth(${d.month}, ${d.year})" class="bg-gray-50 border border-gray-100 rounded-lg p-2 flex flex-col items-center justify-center transition-all hover:border-indigo-200 hover:bg-indigo-50/30 cursor-pointer active:scale-95 shadow-sm hover:shadow-md">
-                        <span class="text-[9px] font-black text-gray-400 uppercase tracking-tighter">${d.label}</span>
-                        <span class="text-sm font-black ${d.count > 0 ? 'text-indigo-600' : 'text-gray-300'}">${d.count}</span>
+                    <div class="bg-gray-50/50 border border-gray-100 p-2 rounded-lg flex flex-col items-center justify-center transition-all hover:bg-indigo-50 hover:border-indigo-100 group">
+                        <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest group-hover:text-indigo-400 transition-colors">${d.label}</span>
+                        <span class="text-lg font-black text-gray-900 group-hover:text-indigo-600 transition-colors">${d.count}</span>
+                        <span class="text-[8px] text-gray-400 font-bold uppercase">Items</span>
                     </div>
                 `).join('')}
             </div>
         `;
     }
 }
-
-window.filterByForecastMonth = function(month, year) {
-    const lastDay = new Date(year, month + 1, 0).getDate();
-    startDateFilter = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-    endDateFilter = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-    
-    // Reset other filters for clarity so the specific items are easily found
-    statusFilter = 'All';
-    searchTerm = '';
-    returnTypeFilter = 'All';
-    listTab = 'inventory'; 
-    
-    showView('list');
-};
 
 // Centralized logic for processing items for the list view
 function getProcessedItems() {
@@ -1141,20 +1107,17 @@ window.handleSort = function(col) {
 
 window.deleteItem = async function(id) {
     if (confirm('Are you sure you want to delete this item?')) {
-        const isSyncRunning = !!autoSyncTimer;
-        if (isSyncRunning) stopAutoSync(); // Pause sync so items don't jump back
-
         items = items.filter(item => item.id !== id);
         selectedItemIds.delete(id);
         await saveItems();
 
-        // Explicitly remove from both potential tables in Cloud
+        // Explicitly remove from Cloud
         if (supabaseClient) {
-            await supabaseClient.from('inventory').delete().eq('id', id);
-            await supabaseClient.from('rtv_history').delete().eq('id', id);
+            supabaseClient.from('inventory').delete().eq('id', id).then(({error}) => {
+                if (error) console.error("Cloud Delete Error:", error.message);
+            });
         }
 
-        if (isSyncRunning) startAutoSync(); // Resume sync
         renderList();
     }
 };
