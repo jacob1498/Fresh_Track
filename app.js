@@ -409,7 +409,7 @@ function renderDashboard() {
     }
 
     const list = document.getElementById('expiring-soon-list');
-    const expiringItems = items.filter(i => i.status === 'Expiring').slice(0, 5);
+    const expiringItems = items.filter(i => i.status === 'Expiring').slice(0, 3);
 
     if (expiringItems.length === 0) {
         list.innerHTML = `<div class="py-8 text-center text-gray-400 italic text-sm">No items expiring soon.</div>`;
@@ -457,20 +457,13 @@ function renderDashboard() {
             forecastData.push({ label: monthLabel, count });
         }
 
-        const maxVal = Math.max(...forecastData.map(d => d.count), 1);
         forecastContainer.innerHTML = `
-            <h3 class="text-sm font-black text-gray-400 uppercase tracking-widest mb-6">12-Month Expiration Forecast</h3>
-            <div class="flex items-stretch justify-between gap-1 h-32 md:h-40 px-2">
+            <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">12-Month Expiration Forecast</h3>
+            <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
                 ${forecastData.map(d => `
-                    <div class="flex-1 flex flex-col items-center group">
-                        <div class="relative w-full flex-1 flex flex-col justify-end items-center mb-2">
-                            <div class="absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[9px] px-2 py-1 rounded font-bold z-20 whitespace-nowrap shadow-xl border border-slate-700">${d.count} items</div>
-                            <div class="w-6 flex-1 bg-indigo-50/50 rounded-t-lg overflow-hidden border border-indigo-100/30 relative">
-                                <div class="absolute bottom-0 left-0 right-0 bg-indigo-600 rounded-t-sm transition-all duration-1000 ease-out group-hover:bg-indigo-400 shadow-[0_-4px_10px_rgba(79,70,229,0.2)]" 
-                                     style="height: ${(d.count / maxVal) * 100}%"></div>
-                            </div>
-                        </div>
-                        <span class="text-[8px] md:text-[10px] font-bold text-gray-400 uppercase tracking-tighter">${d.label}</span>
+                    <div class="bg-gray-50 border border-gray-100 rounded-lg p-2 flex flex-col items-center justify-center transition-all hover:border-indigo-200 hover:bg-indigo-50/30">
+                        <span class="text-[9px] font-black text-gray-400 uppercase tracking-tighter">${d.label}</span>
+                        <span class="text-sm font-black ${d.count > 0 ? 'text-indigo-600' : 'text-gray-300'}">${d.count}</span>
                     </div>
                 `).join('')}
             </div>
