@@ -439,13 +439,35 @@ function renderDashboard() {
         forecastContainer.innerHTML = `
             <h3 class="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">12-Month Expiration Forecast</h3>
             <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                ${forecastData.map(d => `
-                    <div class="bg-gray-50/50 border border-gray-100 p-2 rounded-lg flex flex-col items-center justify-center transition-all hover:bg-indigo-50 hover:border-indigo-100 group">
-                        <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest group-hover:text-indigo-400 transition-colors">${d.label}</span>
-                        <span class="text-lg font-black text-gray-900 group-hover:text-indigo-600 transition-colors">${d.count}</span>
+                ${forecastData.map((d, index) => {
+                    // Apply color coding: Red for current month, Orange for next 2 months, Amber for up to 6 months
+                    let cardStyle = "bg-gray-50/50 border-gray-100 hover:bg-indigo-50 hover:border-indigo-100";
+                    let labelStyle = "text-gray-400 group-hover:text-indigo-400";
+                    let countStyle = "text-gray-900 group-hover:text-indigo-600";
+
+                    if (d.count > 0) {
+                        if (index === 0) { // Critical: Expiring this month
+                            cardStyle = "bg-red-50 border-red-200 hover:bg-red-100";
+                            labelStyle = "text-red-500";
+                            countStyle = "text-red-700";
+                        } else if (index <= 2) { // Warning: Expiring within 90 days
+                            cardStyle = "bg-orange-50 border-orange-200 hover:bg-orange-100";
+                            labelStyle = "text-orange-500";
+                            countStyle = "text-orange-700";
+                        } else if (index <= 5) { // Info: Expiring within 180 days
+                            cardStyle = "bg-amber-50 border-amber-200 hover:bg-amber-100";
+                            labelStyle = "text-amber-500";
+                            countStyle = "text-amber-700";
+                        }
+                    }
+
+                    return `
+                    <div class="${cardStyle} border p-2 rounded-lg flex flex-col items-center justify-center transition-all group">
+                        <span class="text-[9px] font-black ${labelStyle} uppercase tracking-widest transition-colors">${d.label}</span>
+                        <span class="text-lg font-black ${countStyle} transition-colors">${d.count}</span>
                         <span class="text-[8px] text-gray-400 font-bold uppercase">Items</span>
                     </div>
-                `).join('')}
+                `; }).join('')}
             </div>
         `;
     }
