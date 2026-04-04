@@ -1,10 +1,12 @@
 // Define the original sample data as a constant
 const SAMPLE_ITEMS = [
-    { id: 1, location: 'Warehouse A', itemCode: 'MK-001', description: 'Milk 1L', qty: 12, expiryDate: '2025-10-01', status: 'Active', history: 'Initial Stock', category: 'Dairy', returnType: 'Non-Returnable', supplierName: 'Dairy Farms Ltd' },
-    { id: 2, location: 'Fridge 02', itemCode: 'EG-122', description: 'Eggs 12pk', qty: 24, expiryDate: '2025-12-15', status: 'Active', history: 'Restocked', category: 'Dairy', returnType: 'Returnable', supplierName: 'AgriCorp' },
-    { id: 3, location: 'Bakery Shelf', itemCode: 'BR-990', description: 'Whole Wheat Bread', qty: 5, expiryDate: '2025-06-25', status: 'Active', history: 'Initial Stock', category: 'Bakery', returnType: 'Non-Returnable', supplierName: 'SunBake Co' },
-    { id: 4, location: 'Produce Aisle', itemCode: 'AP-552', description: 'Red Apples 1kg', qty: 50, expiryDate: '2025-11-05', status: 'Active', history: 'New Shipment', category: 'Produce', returnType: 'Returnable', supplierName: 'FreshProduce Inc' },
-    { id: 5, location: 'Freezer 01', itemCode: 'CH-221', description: 'Chicken Breast 500g', qty: 15, expiryDate: '2025-08-20', status: 'Active', history: 'Manual Update', category: 'Meat', returnType: 'Non-Returnable', supplierName: 'MeatMaster' }
+    { id: 1, location: 'Warehouse A', itemCode: 'MK-001', description: 'Milk 1L', qty: 12, expiryDate: '2024-03-15', status: 'Active', history: 'Initial Stock', category: 'Dairy', returnType: 'Non-Returnable', supplierName: 'Dairy Farms Ltd' },
+    { id: 2, location: 'Fridge 02', itemCode: 'EG-122', description: 'Eggs 12pk', qty: 24, expiryDate: '2024-05-20', status: 'Active', history: 'Restocked', category: 'Dairy', returnType: 'Returnable', supplierName: 'AgriCorp' },
+    { id: 3, location: 'Bakery Shelf', itemCode: 'BR-990', description: 'Whole Wheat Bread', qty: 5, expiryDate: '2024-01-28', status: 'Active', history: 'Initial Stock', category: 'Bakery', returnType: 'Non-Returnable', supplierName: 'SunBake Co' },
+    { id: 4, location: 'Produce Aisle', itemCode: 'AP-552', description: 'Red Apples 1kg', qty: 50, expiryDate: '2024-07-10', status: 'Active', history: 'New Shipment', category: 'Produce', returnType: 'Returnable', supplierName: 'FreshProduce Inc' },
+    { id: 5, location: 'Freezer 01', itemCode: 'CH-221', description: 'Chicken Breast 500g', qty: 15, expiryDate: '2024-09-01', status: 'Active', history: 'Manual Update', category: 'Meat', returnType: 'Non-Returnable', supplierName: 'MeatMaster' },
+    { id: 6, location: 'Pantry', itemCode: 'PA-001', description: 'Pasta 500g', qty: 30, expiryDate: '2025-02-10', status: 'Active', history: 'Initial Stock', category: 'Dry Goods', returnType: 'Non-Returnable', supplierName: 'GrainCo' },
+    { id: 7, location: 'Warehouse B', itemCode: 'CO-002', description: 'Coffee Beans 1kg', qty: 10, expiryDate: '2024-04-05', status: 'Active', history: 'New Order', category: 'Beverages', returnType: 'Non-Returnable', supplierName: 'BeanSuppliers' }
 ];
 
 // Default System Credentials
@@ -26,7 +28,7 @@ let isSyncing = false;
 let fabMenuOpen = false;
 
 // Mock Data
-let items = [];
+let items = [...SAMPLE_ITEMS];
 
 // Global Search and Filter State
 let searchTerm = '';
@@ -72,9 +74,17 @@ async function fetchCloudData(silent = false) {
     if (!silent) showLoading("Syncing with Cloud...");
     
     try {
-        const { data, error } = await supabaseClient.from('inventory').select('*');
-        if (!error && data) {
-            items = data;
+        // Fetch from both active inventory and RTV history tables
+        const [invResp, rtvResp] = await Promise.all([
+            supabaseClient.from('inventory').select('*'),
+            supabaseClient.from('rtv_history').select('*')
+        ]);
+
+        if (!invResp.error && !rtvResp.error) {
+            const invData = invResp.data || [];
+            const rtvData = (rtvResp.data || []).map(item => ({ ...item, isRTV: true }));
+            
+            items = [...invData, ...rtvData];
             localStorage.setItem('ft_inventory_data', JSON.stringify(items));
             
             // Refresh statuses and re-render the view if it's the dashboard or list
@@ -135,11 +145,22 @@ async function saveItems() {
 
     // 2. Sync to Cloud if Supabase is initialized
     if (supabaseClient) {
-        const { error } = await supabaseClient
-            .from('inventory')
-            .upsert(items, { onConflict: 'id' });
-        
-        if (error) console.error("Cloud Sync Error:", error.message);
+        const inventoryItems = items.filter(i => !i.isRTV);
+        const rtvItems = items.filter(i => i.isRTV);
+
+        // Sync Active Inventory
+        if (inventoryItems.length > 0) {
+            await supabaseClient.from('inventory').upsert(inventoryItems, { onConflict: 'id' });
+        }
+
+        // Sync RTV History Table
+        if (rtvItems.length > 0) {
+            await supabaseClient.from('rtv_history').upsert(rtvItems, { onConflict: 'id' });
+            
+            // Clean up: If items were moved to RTV, remove them from the active inventory table
+            const rtvIds = rtvItems.map(i => i.id);
+            await supabaseClient.from('inventory').delete().in('id', rtvIds);
+        }
     }
 }
 
@@ -439,13 +460,15 @@ function renderDashboard() {
         const maxVal = Math.max(...forecastData.map(d => d.count), 1);
         forecastContainer.innerHTML = `
             <h3 class="text-sm font-black text-gray-400 uppercase tracking-widest mb-6">12-Month Expiration Forecast</h3>
-            <div class="flex items-end justify-between gap-1 h-32 md:h-40 px-2">
+            <div class="flex items-stretch justify-between gap-1 h-32 md:h-40 px-2">
                 ${forecastData.map(d => `
-                    <div class="flex-1 flex flex-col items-center gap-2 group">
-                        <div class="relative w-full flex justify-center items-end h-full">
-                            <div class="absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[9px] px-2 py-1 rounded font-bold z-10 whitespace-nowrap shadow-xl border border-slate-700">${d.count} items</div>
-                            <div class="w-full max-w-[24px] bg-indigo-500/5 rounded-t-sm h-full"></div>
-                            <div class="absolute bottom-0 w-full max-w-[24px] bg-indigo-600 rounded-t-sm transition-all duration-1000 ease-out group-hover:bg-indigo-400" style="height: ${(d.count / maxVal) * 100}%"></div>
+                    <div class="flex-1 flex flex-col items-center group">
+                        <div class="relative w-full flex-1 flex flex-col justify-end items-center mb-2">
+                            <div class="absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[9px] px-2 py-1 rounded font-bold z-20 whitespace-nowrap shadow-xl border border-slate-700">${d.count} items</div>
+                            <div class="w-6 flex-1 bg-indigo-50/50 rounded-t-lg overflow-hidden border border-indigo-100/30 relative">
+                                <div class="absolute bottom-0 left-0 right-0 bg-indigo-600 rounded-t-sm transition-all duration-1000 ease-out group-hover:bg-indigo-400 shadow-[0_-4px_10px_rgba(79,70,229,0.2)]" 
+                                     style="height: ${(d.count / maxVal) * 100}%"></div>
+                            </div>
                         </div>
                         <span class="text-[8px] md:text-[10px] font-bold text-gray-400 uppercase tracking-tighter">${d.label}</span>
                     </div>
@@ -1115,11 +1138,10 @@ window.deleteItem = async function(id) {
         selectedItemIds.delete(id);
         await saveItems();
 
-        // Explicitly remove from Cloud
+        // Explicitly remove from both potential tables in Cloud
         if (supabaseClient) {
-            supabaseClient.from('inventory').delete().eq('id', id).then(({error}) => {
-                if (error) console.error("Cloud Delete Error:", error.message);
-            });
+            await supabaseClient.from('inventory').delete().eq('id', id);
+            await supabaseClient.from('rtv_history').delete().eq('id', id);
         }
 
         renderList();
