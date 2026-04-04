@@ -1,12 +1,12 @@
 // Define the original sample data as a constant
 const SAMPLE_ITEMS = [
-    { id: 1, location: 'Warehouse A', itemCode: 'MK-001', description: 'Milk 1L', qty: 12, expiryDate: '2024-03-15', status: 'Active', history: 'Initial Stock', category: 'Dairy', returnType: 'Non-Returnable', supplierName: 'Dairy Farms Ltd' },
-    { id: 2, location: 'Fridge 02', itemCode: 'EG-122', description: 'Eggs 12pk', qty: 24, expiryDate: '2024-05-20', status: 'Active', history: 'Restocked', category: 'Dairy', returnType: 'Returnable', supplierName: 'AgriCorp' },
-    { id: 3, location: 'Bakery Shelf', itemCode: 'BR-990', description: 'Whole Wheat Bread', qty: 5, expiryDate: '2024-01-28', status: 'Active', history: 'Initial Stock', category: 'Bakery', returnType: 'Non-Returnable', supplierName: 'SunBake Co' },
-    { id: 4, location: 'Produce Aisle', itemCode: 'AP-552', description: 'Red Apples 1kg', qty: 50, expiryDate: '2024-07-10', status: 'Active', history: 'New Shipment', category: 'Produce', returnType: 'Returnable', supplierName: 'FreshProduce Inc' },
-    { id: 5, location: 'Freezer 01', itemCode: 'CH-221', description: 'Chicken Breast 500g', qty: 15, expiryDate: '2024-09-01', status: 'Active', history: 'Manual Update', category: 'Meat', returnType: 'Non-Returnable', supplierName: 'MeatMaster' },
-    { id: 6, location: 'Pantry', itemCode: 'PA-001', description: 'Pasta 500g', qty: 30, expiryDate: '2025-02-10', status: 'Active', history: 'Initial Stock', category: 'Dry Goods', returnType: 'Non-Returnable', supplierName: 'GrainCo' },
-    { id: 7, location: 'Warehouse B', itemCode: 'CO-002', description: 'Coffee Beans 1kg', qty: 10, expiryDate: '2024-04-05', status: 'Active', history: 'New Order', category: 'Beverages', returnType: 'Non-Returnable', supplierName: 'BeanSuppliers' }
+    { id: 's-1', location: 'Warehouse A', itemCode: 'MK-001', description: 'Milk 1L', qty: 12, expiryDate: '2024-03-15', status: 'Active', history: 'Initial Stock', category: 'Dairy', returnType: 'Non-Returnable', supplierName: 'Dairy Farms Ltd' },
+    { id: 's-2', location: 'Fridge 02', itemCode: 'EG-122', description: 'Eggs 12pk', qty: 24, expiryDate: '2024-05-20', status: 'Active', history: 'Restocked', category: 'Dairy', returnType: 'Returnable', supplierName: 'AgriCorp' },
+    { id: 's-3', location: 'Bakery Shelf', itemCode: 'BR-990', description: 'Whole Wheat Bread', qty: 5, expiryDate: '2024-01-28', status: 'Active', history: 'Initial Stock', category: 'Bakery', returnType: 'Non-Returnable', supplierName: 'SunBake Co' },
+    { id: 's-4', location: 'Produce Aisle', itemCode: 'AP-552', description: 'Red Apples 1kg', qty: 50, expiryDate: '2024-07-10', status: 'Active', history: 'New Shipment', category: 'Produce', returnType: 'Returnable', supplierName: 'FreshProduce Inc' },
+    { id: 's-5', location: 'Freezer 01', itemCode: 'CH-221', description: 'Chicken Breast 500g', qty: 15, expiryDate: '2024-09-01', status: 'Active', history: 'Manual Update', category: 'Meat', returnType: 'Non-Returnable', supplierName: 'MeatMaster' },
+    { id: 's-6', location: 'Pantry', itemCode: 'PA-001', description: 'Pasta 500g', qty: 30, expiryDate: '2025-02-10', status: 'Active', history: 'Initial Stock', category: 'Dry Goods', returnType: 'Non-Returnable', supplierName: 'GrainCo' },
+    { id: 's-7', location: 'Warehouse B', itemCode: 'CO-002', description: 'Coffee Beans 1kg', qty: 10, expiryDate: '2024-04-05', status: 'Active', history: 'New Order', category: 'Beverages', returnType: 'Non-Returnable', supplierName: 'BeanSuppliers' }
 ];
 
 // Default System Credentials
@@ -28,7 +28,7 @@ let isSyncing = false;
 let fabMenuOpen = false;
 
 // Mock Data
-let items = JSON.parse(localStorage.getItem('ft_inventory_data')) || [];
+let items = JSON.parse(localStorage.getItem('ft_inventory_data')) || []; // Starts empty, no auto-inject
 
 // Global Search and Filter State
 let searchTerm = '';
@@ -1141,6 +1141,9 @@ window.handleSort = function(col) {
 
 window.deleteItem = async function(id) {
     if (confirm('Are you sure you want to delete this item?')) {
+        const isSyncRunning = !!autoSyncTimer;
+        if (isSyncRunning) stopAutoSync(); // Pause sync so items don't jump back
+
         items = items.filter(item => item.id !== id);
         selectedItemIds.delete(id);
         await saveItems();
@@ -1151,6 +1154,7 @@ window.deleteItem = async function(id) {
             await supabaseClient.from('rtv_history').delete().eq('id', id);
         }
 
+        if (isSyncRunning) startAutoSync(); // Resume sync
         renderList();
     }
 };
