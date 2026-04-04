@@ -28,7 +28,7 @@ let isSyncing = false;
 let fabMenuOpen = false;
 
 // Mock Data
-let items = [...SAMPLE_ITEMS];
+let items = JSON.parse(localStorage.getItem('ft_inventory_data')) || [];
 
 // Global Search and Filter State
 let searchTerm = '';
@@ -454,14 +454,14 @@ function renderDashboard() {
                 return (m - 1) === targetMonth && y === targetYear;
             }).length;
 
-            forecastData.push({ label: monthLabel, count });
+            forecastData.push({ label: monthLabel, count, month: targetMonth, year: targetYear });
         }
 
         forecastContainer.innerHTML = `
             <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">12-Month Expiration Forecast</h3>
             <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
                 ${forecastData.map(d => `
-                    <div class="bg-gray-50 border border-gray-100 rounded-lg p-2 flex flex-col items-center justify-center transition-all hover:border-indigo-200 hover:bg-indigo-50/30">
+                    <div onclick="filterByForecastMonth(${d.month}, ${d.year})" class="bg-gray-50 border border-gray-100 rounded-lg p-2 flex flex-col items-center justify-center transition-all hover:border-indigo-200 hover:bg-indigo-50/30 cursor-pointer active:scale-95 shadow-sm hover:shadow-md">
                         <span class="text-[9px] font-black text-gray-400 uppercase tracking-tighter">${d.label}</span>
                         <span class="text-sm font-black ${d.count > 0 ? 'text-indigo-600' : 'text-gray-300'}">${d.count}</span>
                     </div>
@@ -470,6 +470,20 @@ function renderDashboard() {
         `;
     }
 }
+
+window.filterByForecastMonth = function(month, year) {
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    startDateFilter = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    endDateFilter = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    
+    // Reset other filters for clarity so the specific items are easily found
+    statusFilter = 'All';
+    searchTerm = '';
+    returnTypeFilter = 'All';
+    listTab = 'inventory'; 
+    
+    showView('list');
+};
 
 // Centralized logic for processing items for the list view
 function getProcessedItems() {
