@@ -24,6 +24,8 @@ let inactivityTimer;
 let autoSyncTimer;
 let isSyncing = false;
 let fabMenuOpen = false;
+let currentUserRole = localStorage.getItem('ft_role') || 'client';
+let isApproved = localStorage.getItem('ft_is_approved') === 'true';
 
 // Mock Data
 let items = [];
@@ -158,59 +160,118 @@ function refreshItemStatuses(skipSave = false) {
     if (changed && !skipSave) saveItems();
 }
 
+// Toggle between Login and Signup views
+window.toggleAuthViews = function(target) {
+    if (target === 'signup') {
+        document.getElementById('login-view').classList.add('hidden');
+        document.getElementById('signup-view').classList.remove('hidden');
+    } else {
+        document.getElementById('login-view').classList.remove('hidden');
+        document.getElementById('signup-view').classList.add('hidden');
+    }
+};
+
 // Authentication Logic
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     showLoading("Authenticating...");
     
-    const emailInput = e.target.querySelector('input[type="email"]').value;
-    const passwordInput = e.target.querySelector('input[type="password"]').value;
+    const emailInput = document.getElementById('login-email').value;
+    const passwordInput = document.getElementById('login-password').value;
     
-    // 1. Check local credentials first
-    let storedUser = localStorage.getItem('ft_username') || DEFAULT_USER;
-    let storedPass = localStorage.getItem('ft_password') || DEFAULT_PASS;
-
-    // 2. If local doesn't match, attempt to verify with Cloud
-    if (emailInput !== storedUser || passwordInput !== storedPass) {
-        if (supabaseClient) {
-            const { data, error } = await supabaseClient
-                .from('profiles')
-                .select('*')
-                .eq('id', 'admin_account')
-                .single();
-            
-            if (!error && data) {
-                storedUser = data.username;
-                storedPass = data.password;
-                if (data.avatar) localStorage.setItem('ft_avatar', data.avatar);
-            }
-        }
+    if (!supabaseClient) {
+        hideLoading();
+        alert("Cloud service not available.");
+        return;
     }
 
-    hideLoading();
-    if (emailInput === storedUser && passwordInput === storedPass) {
-        // Sync local storage with verified credentials
-        localStorage.setItem('ft_username', storedUser);
-        localStorage.setItem('ft_password', storedPass);
+    try {
+        const { data, error } = await supabaseClient
+            .from('profiles')
+            .select('*')
+            .eq('username', emailInput)
+            .eq('password', passwordInput)
+            .single();
+
+        if (error || !data) {
+            throw new Error("Invalid email or password.");
+        }
+
+        // Security Check: Clients must be approved
+        if (data.role === 'client' && !data.is_approved) {
+            throw new Error("Your account is pending administrator approval.");
+        }
+
+        // Login Success
+        localStorage.setItem('ft_username', data.username);
+        localStorage.setItem('ft_password', data.password);
+        localStorage.setItem('ft_role', data.role);
+        localStorage.setItem('ft_user_id', data.id);
+        localStorage.setItem('ft_is_approved', data.is_approved);
         localStorage.setItem('isLoggedIn', 'true');
-        
+        if (data.avatar) localStorage.setItem('ft_avatar', data.avatar);
+
+        currentUserRole = data.role;
+        isApproved = data.is_approved;
+
         document.getElementById('login-view').classList.add('hidden');
         document.getElementById('main-layout').classList.remove('hidden');
-        updateUIWithUser(storedUser);
+        
+        updateUIWithUser(data.username);
+        updateSidebarForRole();
         startInactivityTimer();
         showView('dashboard');
-        startAutoSync(); // Immediately start the 2s refresh timer upon login
-    } else {
-        alert('Invalid credentials. Please try again.');
+        startAutoSync();
+    } catch (err) {
+        alert(err.message);
+    } finally {
+        hideLoading();
     }
 });
+
+document.getElementById('signup-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    showLoading("Creating Account...");
+    
+    const email = document.getElementById('signup-email').value;
+    const password = document.getElementById('signup-password').value;
+
+    const { error } = await supabaseClient.from('profiles').upsert({
+        id: `user_${Date.now()}`,
+        username: email,
+        password: password,
+        role: 'client',
+        is_approved: false
+    });
+
+    hideLoading();
+    if (error) {
+        alert("Signup failed: " + error.message);
+    } else {
+        alert("Request sent! Please wait for an administrator to approve your account.");
+        toggleAuthViews('login');
+    }
+});
+
+function updateSidebarForRole() {
+    const usersNav = document.getElementById('nav-users');
+    if (currentUserRole === 'admin') {
+        usersNav?.classList.remove('hidden');
+    } else {
+        usersNav?.classList.add('hidden');
+    }
+}
 
 function logout() {
     clearTimeout(inactivityTimer);
     stopAutoSync();
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('currentView');
+    localStorage.removeItem('ft_role');
+    localStorage.removeItem('ft_user_id');
+    localStorage.removeItem('ft_is_approved');
     document.getElementById('login-view').classList.remove('hidden');
+    document.getElementById('signup-view').classList.add('hidden');
     document.getElementById('main-layout').classList.add('hidden');
 }
 
@@ -257,6 +318,7 @@ window.showView = function(viewId) {
     if (viewId === 'list') renderList();
     if (viewId === 'reports') renderReports();
     if (viewId === 'settings') renderSettings();
+    if (viewId === 'users') renderUsers();
     renderFAB();
 }
 
@@ -419,9 +481,9 @@ function renderDashboard() {
     const forecastContainer = document.getElementById('expiration-forecast');
     if (forecastContainer) {
         const forecastData = [];
-        const now = new Date();
+        const forecastStart = new Date(2026, 4, 1); // Start range from May 2026
         for (let i = 0; i < 12; i++) {
-            const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+            const d = new Date(forecastStart.getFullYear(), forecastStart.getMonth() + i, 1);
             const monthLabel = d.toLocaleString('default', { month: 'short' });
             const targetMonth = d.getMonth();
             const targetYear = d.getFullYear();
@@ -530,6 +592,14 @@ function renderList() {
     const totalItems = filteredItems.length;
     const totalPages = Math.ceil(totalItems / rowsPerPage);
     if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
+
+    // Summary statistics for the filtered list
+    const totalQty = filteredItems.reduce((sum, i) => sum + (Number(i.qty) || 0), 0);
+    const statusBreakdown = filteredItems.reduce((acc, curr) => {
+        acc[curr.status] = (acc[curr.status] || 0) + 1;
+        return acc;
+    }, { 'Active': 0, 'Expiring': 0, 'Expired': 0 });
+
     const startIdx = (currentPage - 1) * rowsPerPage;
     const endIdx = startIdx + rowsPerPage;
     const paginatedItems = filteredItems.slice(startIdx, endIdx);
@@ -614,6 +684,33 @@ function renderList() {
                 </div>
             </div>
         </div>
+
+        <!-- Filter Summary Bar -->
+        <div class="sticky top-0 z-20 bg-gray-50/95 backdrop-blur-sm py-4 mb-4 flex flex-wrap gap-3 items-center border-b border-gray-100 shadow-sm md:shadow-none -mx-4 px-4 md:-mx-8 md:px-8">
+            <div class="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 shadow-sm">
+                <i class="fas fa-calculator text-indigo-500 text-xs"></i>
+                <span class="text-[10px] font-black text-indigo-700 uppercase tracking-tight">Total Qty: ${totalQty.toLocaleString()}</span>
+            </div>
+            <div class="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm">
+                <i class="fas fa-layer-group text-gray-400 text-xs"></i>
+                <span class="text-[10px] font-black text-gray-600 uppercase tracking-tight">Filtered Items: ${totalItems}</span>
+            </div>
+            <div class="flex items-center gap-4 bg-white px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm ml-auto md:ml-0">
+                <div class="flex items-center gap-1.5">
+                    <div class="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                    <span class="text-[10px] font-bold text-gray-500">${statusBreakdown.Active} Active</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <div class="w-1.5 h-1.5 rounded-full bg-orange-500"></div>
+                    <span class="text-[10px] font-bold text-gray-500">${statusBreakdown.Expiring} Expiring</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <div class="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                    <span class="text-[10px] font-bold text-gray-500">${statusBreakdown.Expired} Expired</span>
+                </div>
+            </div>
+        </div>
+
         <div class="bg-white rounded-xl shadow-sm border border-gray-100">
             ${!isMobile ? `
             <div class="overflow-x-auto">
@@ -1734,7 +1831,8 @@ window.saveAccountChanges = async function(e) {
 
 async function syncProfileToCloud(username, password, avatar) {
     if (supabaseClient) {
-        const updates = { id: 'admin_account', username };
+        const userId = localStorage.getItem('ft_user_id') || 'admin_account';
+        const updates = { id: userId, username };
         if (password) updates.password = password;
         if (avatar) updates.avatar = avatar;
 
@@ -1785,6 +1883,97 @@ function updateUIWithUser(username) {
         }
     }
 }
+
+// User Management Logic
+async function renderUsers() {
+    const container = document.getElementById('view-users');
+    if (!supabaseClient) {
+        container.innerHTML = `<div class="p-8 text-center text-gray-500">Cloud storage connection required for user management.</div>`;
+        return;
+    }
+
+    showLoading("Fetching users...");
+    const { data: users, error } = await supabaseClient.from('profiles').select('*');
+    hideLoading();
+
+    if (error) {
+        container.innerHTML = `<div class="p-8 text-center text-red-500">Error: ${error.message}</div>`;
+        return;
+    }
+
+    const pendingUsers = users.filter(u => !u.is_approved && u.role !== 'admin');
+    const approvedUsers = users.filter(u => u.is_approved || u.role === 'admin');
+
+    container.innerHTML = `
+        <div class="space-y-8">
+            <div>
+                <h3 class="text-xl font-black text-gray-900 mb-4">Pending Approvals</h3>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 border-b">
+                            <tr>
+                                <th class="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Email</th>
+                                <th class="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                            ${pendingUsers.length ? pendingUsers.map(u => `
+                                <tr>
+                                    <td class="px-6 py-4 text-sm font-medium text-gray-900">${u.username}</td>
+                                    <td class="px-6 py-4 text-right space-x-2">
+                                        <button onclick="updateUserStatus('${u.username}', true)" class="bg-green-50 text-green-600 px-3 py-1 rounded-lg text-xs font-bold hover:bg-green-100 transition">Approve</button>
+                                        <button onclick="deleteUser('${u.username}')" class="bg-red-50 text-red-600 px-3 py-1 rounded-lg text-xs font-bold hover:bg-red-100 transition">Reject</button>
+                                    </td>
+                                </tr>
+                            `).join('') : `<tr><td colspan="2" class="px-6 py-8 text-center text-gray-400 italic">No pending requests</td></tr>`}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-xl font-black text-gray-900 mb-4">Approved Users</h3>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 border-b">
+                            <tr>
+                                <th class="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Email</th>
+                                <th class="px-6 py-3 text-xs font-bold text-gray-500 uppercase">Role</th>
+                                <th class="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                            ${approvedUsers.map(u => `
+                                <tr>
+                                    <td class="px-6 py-4 text-sm text-gray-600">${u.username}</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-[10px] font-black uppercase ${u.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'}">${u.role}</span></td>
+                                    <td class="px-6 py-4 text-right">
+                                        ${u.role !== 'admin' ? `<button onclick="deleteUser('${u.username}')" class="text-red-400 hover:text-red-600 p-2 transition"><i class="fas fa-trash"></i></button>` : '--'}
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+window.updateUserStatus = async function(username, approved) {
+    showLoading("Updating user...");
+    await supabaseClient.from('profiles').update({ is_approved: approved }).eq('username', username);
+    hideLoading();
+    renderUsers();
+};
+
+window.deleteUser = async function(username) {
+    if (!confirm(`Are you sure you want to remove user ${username}?`)) return;
+    showLoading("Removing user...");
+    await supabaseClient.from('profiles').delete().eq('username', username);
+    hideLoading();
+    renderUsers();
+};
 
 // Session Management
 function startInactivityTimer() {
@@ -1886,6 +2075,7 @@ function init() {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     if (isLoggedIn) {
         startInactivityTimer();
+        updateSidebarForRole();
         document.getElementById('login-view').classList.add('hidden');
         document.getElementById('main-layout').classList.remove('hidden');
         const savedView = localStorage.getItem('currentView') || 'dashboard';
