@@ -66,7 +66,7 @@ function calculateStatus(expiryDateStr) {
 
 // Cloud Data Fetching Logic
 async function fetchCloudData(silent = false) {
-    if (!supabaseClient || isSyncing) return;
+    if (!supabaseClient || isSyncing || (!localStorage.getItem('isLoggedIn') && !silent)) return;
     
     isSyncing = true;
     updateSyncUI(true);
@@ -624,8 +624,7 @@ function renderList() {
             </button>
         </div>
 
-        <div class="flex flex-col gap-4 mb-6">
-            <div class="flex justify-between items-center">
+        <div class="flex justify-between items-center mb-6">
                 <h3 class="text-xl font-black text-gray-900">${listTab === 'inventory' ? 'Inventory' : 'RTV History Logs'}</h3>
                 ${selectedItemIds.size > 0 ? `
                     <div class="flex gap-2">
@@ -641,6 +640,8 @@ function renderList() {
                 ` : ''}
             </div>
 
+        <!-- Sticky Header: Search, Filters, and Summary -->
+        <div class="sticky top-0 z-20 bg-gray-50/95 backdrop-blur-sm py-4 mb-4 border-b border-gray-100 shadow-sm md:shadow-none -mx-4 px-4 md:-mx-8 md:px-8 flex flex-col gap-4">
             <!-- Search and Filter Controls -->
             <div class="flex flex-col md:flex-row gap-3">
                 <!-- Search Bar -->
@@ -683,30 +684,30 @@ function renderList() {
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Filter Summary Bar -->
-        <div class="sticky top-0 z-20 bg-gray-50/95 backdrop-blur-sm py-4 mb-4 flex flex-wrap gap-3 items-center border-b border-gray-100 shadow-sm md:shadow-none -mx-4 px-4 md:-mx-8 md:px-8">
-            <div class="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 shadow-sm">
-                <i class="fas fa-calculator text-indigo-500 text-xs"></i>
-                <span class="text-[10px] font-black text-indigo-700 uppercase tracking-tight">Total Qty: ${totalQty.toLocaleString()}</span>
-            </div>
-            <div class="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm">
-                <i class="fas fa-layer-group text-gray-400 text-xs"></i>
-                <span class="text-[10px] font-black text-gray-600 uppercase tracking-tight">Filtered Items: ${totalItems}</span>
-            </div>
-            <div class="flex items-center gap-4 bg-white px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm ml-auto md:ml-0">
-                <div class="flex items-center gap-1.5">
-                    <div class="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                    <span class="text-[10px] font-bold text-gray-500">${statusBreakdown.Active} Active</span>
+            <!-- Filter Summary Bar -->
+            <div class="flex flex-wrap gap-3 items-center">
+                <div class="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 shadow-sm">
+                    <i class="fas fa-calculator text-indigo-500 text-xs"></i>
+                    <span class="text-[10px] font-black text-indigo-700 uppercase tracking-tight">Total Qty: ${totalQty.toLocaleString()}</span>
                 </div>
-                <div class="flex items-center gap-1.5">
-                    <div class="w-1.5 h-1.5 rounded-full bg-orange-500"></div>
-                    <span class="text-[10px] font-bold text-gray-500">${statusBreakdown.Expiring} Expiring</span>
+                <div class="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm">
+                    <i class="fas fa-layer-group text-gray-400 text-xs"></i>
+                    <span class="text-[10px] font-black text-gray-600 uppercase tracking-tight">Filtered Items: ${totalItems}</span>
                 </div>
-                <div class="flex items-center gap-1.5">
-                    <div class="w-1.5 h-1.5 rounded-full bg-red-500"></div>
-                    <span class="text-[10px] font-bold text-gray-500">${statusBreakdown.Expired} Expired</span>
+                <div class="flex items-center gap-4 bg-white px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm ml-auto md:ml-0">
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                        <span class="text-[10px] font-bold text-gray-500">${statusBreakdown.Active} Active</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-1.5 h-1.5 rounded-full bg-orange-500"></div>
+                        <span class="text-[10px] font-bold text-gray-500">${statusBreakdown.Expiring} Expiring</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                        <span class="text-[10px] font-bold text-gray-500">${statusBreakdown.Expired} Expired</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2053,7 +2054,7 @@ function init() {
     updateUIWithUser(currentUsername);
 
     // Load inventory data and start background sync
-    fetchCloudData();
+    fetchCloudData(true); // Make initial sync silent so it doesn't block the login screen
 
     // Register PWA Service Worker
     if ('serviceWorker' in navigator) {
