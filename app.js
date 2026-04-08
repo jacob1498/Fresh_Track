@@ -143,11 +143,13 @@ async function saveItems() {
             
             if (error) throw new Error(error.message);
         }
+        return { success: true };
     } catch (e) {
         console.error("Save/Sync Error:", e);
         if (e.name === 'QuotaExceededError') {
             alert("Local storage is full! Try clearing your cache or removing your profile picture.");
         }
+        return { success: false, error: e.message };
     } finally {
         isSyncing = false;
     }
@@ -1247,7 +1249,7 @@ function handleUpload(event) {
     showLoading("Importing Inventory Data...");
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
         try {
             const text = e.target.result;
             if (!text.trim()) throw new Error("File is empty.");
@@ -1294,19 +1296,24 @@ function handleUpload(event) {
             });
 
             if (errors.length > 0) {
-                alert(`Import partially failed with ${errors.length} errors:\n` + errors.slice(0, 3).join('\n') + (errors.length > 3 ? '\n...' : ''));
+                showToast(`Import had ${errors.length} formatting errors.`, 'error');
             }
 
             if (newItems.length > 0) {
                 items = [...items, ...newItems];
-                saveItems();
                 renderList();
-                alert(`Successfully imported ${newItems.length} items.`);
+
+                const result = await saveItems();
+                if (result.success) {
+                    showToast(`Successfully saved ${newItems.length} items to Cloud.`, 'success');
+                } else {
+                    showToast(`Failed to sync to Cloud: ${result.error}`, 'error');
+                }
             } else if (errors.length > 0) {
-                alert("No valid items were found to import.");
+                showToast("No valid items were found to import.", "error");
             }
         } catch (error) {
-            alert("CSV Upload Error: " + error.message);
+            showToast("CSV Upload Error: " + error.message, "error");
         } finally {
             hideLoading();
             event.target.value = '';
@@ -1423,6 +1430,38 @@ window.showLoading = function(text = "Processing Data") {
 window.hideLoading = function() {
     const overlay = document.getElementById('loading-overlay');
     if (overlay) overlay.classList.add('hidden');
+};
+
+window.showToast = function(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    const isSuccess = type === 'success';
+    
+    toast.className = `
+        pointer-events-auto mb-3 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 
+        transform transition-all duration-500 translate-x-full opacity-0
+        ${isSuccess ? 'bg-white border-l-4 border-green-500 text-gray-800' : 'bg-red-600 text-white'}
+    `;
+
+    toast.innerHTML = `
+        <div class="${isSuccess ? 'text-green-500' : 'text-white'}">
+            <i class="fas ${isSuccess ? 'fa-check-circle' : 'fa-exclamation-triangle'} text-xl"></i>
+        </div>
+        <div class="flex flex-col">
+            <span class="text-[10px] font-black uppercase tracking-widest ${isSuccess ? 'text-gray-400' : 'text-red-100'}">${isSuccess ? 'Sync Status' : 'Upload Error'}</span>
+            <span class="text-sm font-bold">${message}</span>
+        </div>
+    `;
+
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.remove('translate-x-full', 'opacity-0'));
+
+    setTimeout(() => {
+        toast.classList.add('translate-x-full', 'opacity-0');
+        setTimeout(() => toast.remove(), 500);
+    }, 6000);
 };
 
 function renderReports() {
