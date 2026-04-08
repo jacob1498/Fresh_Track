@@ -103,11 +103,11 @@ function startAutoSync() {
     if (isEnabled && isLoggedIn) {
         autoSyncTimer = setInterval(() => {
             const currentView = localStorage.getItem('currentView') || 'dashboard';
-            // Specifically trigger auto-refresh for list and dashboard
-            if (currentView === 'dashboard' || currentView === 'list') {
+            // Only sync if we aren't already syncing and in a relevant view
+            if (!isSyncing && (currentView === 'dashboard' || currentView === 'list')) {
                 fetchCloudData(true);
             }
-        }, 2000); 
+        }, 30000); // Increased to 30 seconds to prevent race conditions with large data
     }
 }
 
@@ -130,16 +130,26 @@ function stopAutoSync() {
 
 // Persistent Storage Logic
 async function saveItems() {
-    // 1. Always persist locally first for offline safety
-    localStorage.setItem('ft_inventory_data', JSON.stringify(items));
+    try {
+        // 1. Always persist locally first for offline safety
+        localStorage.setItem('ft_inventory_data', JSON.stringify(items));
 
-    // 2. Sync to Cloud if Supabase is initialized
-    if (supabaseClient) {
-        const { error } = await supabaseClient
-            .from('inventory')
-            .upsert(items, { onConflict: 'id' });
-        
-        if (error) console.error("Cloud Sync Error:", error.message);
+        // 2. Sync to Cloud if Supabase is initialized
+        if (supabaseClient) {
+            isSyncing = true;
+            const { error } = await supabaseClient
+                .from('inventory')
+                .upsert(items, { onConflict: 'id' });
+            
+            if (error) throw new Error(error.message);
+        }
+    } catch (e) {
+        console.error("Save/Sync Error:", e);
+        if (e.name === 'QuotaExceededError') {
+            alert("Local storage is full! Try clearing your cache or removing your profile picture.");
+        }
+    } finally {
+        isSyncing = false;
     }
 }
 
