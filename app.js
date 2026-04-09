@@ -1079,7 +1079,9 @@ window.submitAdjustment = async function(type) {
     closeQtyCalc();
     renderList();
 
-    printAdjustmentReceipt(item, type, amount, oldQty, newQty, timestamp);
+    if (confirm(`${actionText} units for ${item.description}. Generate acknowledgement receipt?`)) {
+        printAdjustmentReceipt(item, type, amount, oldQty, newQty, timestamp);
+    }
 };
 
 window.printAdjustmentReceipt = function(item, type, amount, oldQty, newQty, timestamp) {
