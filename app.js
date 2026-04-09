@@ -1054,6 +1054,8 @@ window.submitAdjustment = async function(type) {
     if (!item) return closeQtyCalc();
 
     let newQty = item.qty;
+    const oldQty = item.qty;
+    const amount = adjustment;
     let actionText = '';
 
     if (type === 'add') {
@@ -1076,6 +1078,99 @@ window.submitAdjustment = async function(type) {
     await saveItems();
     closeQtyCalc();
     renderList();
+
+    if (confirm(`${actionText} units for ${item.description}. Generate acknowledgement receipt?`)) {
+        printAdjustmentReceipt(item, type, amount, oldQty, newQty, timestamp);
+    }
+};
+
+window.printAdjustmentReceipt = function(item, type, amount, oldQty, newQty, timestamp) {
+    const printWindow = window.open('', '_blank');
+    const isAdd = type === 'add';
+    const opName = isAdd ? 'Stock Addition' : 'Stock Removal';
+    const color = isAdd ? '#10b981' : '#ef4444';
+
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>FreshTrack Receipt - ${item.itemCode}</title>
+            <style>
+                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #1e293b; line-height: 1.5; }
+                .container { max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 30px; border-radius: 12px; }
+                .header { text-align: center; border-bottom: 2px solid #4f46e5; padding-bottom: 20px; margin-bottom: 30px; }
+                .logo { font-size: 28px; font-weight: 900; color: #4f46e5; letter-spacing: -1px; }
+                .voucher-type { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: #64748b; margin-top: 5px; }
+                .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+                .field-label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #94a3b8; margin-bottom: 4px; }
+                .field-value { font-size: 14px; font-weight: 700; color: #334155; }
+                .adjustment-section { background: #f8fafc; border-radius: 8px; padding: 20px; margin-bottom: 40px; border: 1px dashed #cbd5e1; }
+                .adj-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
+                .total-row { border-top: 2px solid #cbd5e1; margin-top: 10px; padding-top: 15px; }
+                .footer { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; margin-top: 60px; }
+                .signature-box { border-top: 1px solid #334155; text-align: center; padding-top: 10px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; }
+                @media print { body { padding: 0; } .container { border: none; } }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <div class="logo">FreshTrack</div>
+                    <div class="voucher-type">Inventory Adjustment Voucher</div>
+                </div>
+                
+                <div class="grid">
+                    <div>
+                        <div class="field-label">Date & Time</div>
+                        <div class="field-value">${timestamp}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div class="field-label">Reference ID</div>
+                        <div class="field-value">#ADJ-${Date.now().toString().slice(-6)}</div>
+                    </div>
+                    <div>
+                        <div class="field-label">Item Description</div>
+                        <div class="field-value">${item.description}</div>
+                        <div class="field-value" style="font-size: 11px; color: #64748b;">Code: ${item.itemCode}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div class="field-label">Location / Area</div>
+                        <div class="field-value">${item.location}</div>
+                    </div>
+                </div>
+
+                <div class="adjustment-section">
+                    <div class="adj-row">
+                        <span style="font-weight: 600;">Previous Stock Level</span>
+                        <span style="font-weight: 700;">${oldQty}</span>
+                    </div>
+                    <div class="adj-row">
+                        <span style="font-weight: 600; color: ${color};">${opName}</span>
+                        <span style="font-weight: 800; font-size: 18px; color: ${color};">${isAdd ? '+' : '-'}${amount}</span>
+                    </div>
+                    <div class="adj-row total-row">
+                        <span style="font-weight: 800; text-transform: uppercase;">Final On-Hand Balance</span>
+                        <span style="font-weight: 900; font-size: 22px; color: #1e293b;">${newQty}</span>
+                    </div>
+                </div>
+
+                <div class="footer">
+                    <div class="signature-box">Authorized Signature</div>
+                    <div class="signature-box">Receiver Signature</div>
+                </div>
+            </div>
+            <script>
+                window.onload = function() { 
+                    setTimeout(() => {
+                        window.print(); 
+                        window.close();
+                    }, 500);
+                };
+            </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
 };
 
 window.openEditModal = function(id) {
