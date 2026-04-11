@@ -1652,6 +1652,27 @@ window.resetApp = function() {
     }
 };
 
+window.checkDuplicates = function() {
+    const counts = {};
+    items.forEach(item => {
+        const code = (item.itemCode || '').trim().toUpperCase();
+        if (code) counts[code] = (counts[code] || 0) + 1;
+    });
+
+    const duplicateCodes = Object.keys(counts).filter(code => counts[code] > 1);
+
+    if (duplicateCodes.length > 0) {
+        alert(`Audit Results: Found ${duplicateCodes.length} item codes with multiple entries.\n\nClearing filters and searching for: ${duplicateCodes[0]}`);
+        searchTerm = duplicateCodes[0];
+        statusFilter = 'All';
+        returnTypeFilter = 'All';
+        listTab = 'inventory';
+        showView('list');
+    } else {
+        showToast("Audit Complete: No duplicate item codes found.", "success");
+    }
+};
+
 window.setTheme = function(theme) {
     const body = document.body;
     if (theme === 'default') {
@@ -1805,6 +1826,9 @@ function renderSettings() {
                             </div>
                             
                             <div class="pt-4 border-t border-gray-50 space-y-3">
+                                <button onclick="checkDuplicates()" class="w-full py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl text-xs font-black uppercase tracking-widest transition border border-indigo-100">
+                                    Check Duplicates
+                                </button>
                                 <button onclick="alert('System cache cleared.')" class="w-full py-3 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-black uppercase tracking-widest transition border border-gray-100">
                                     Clear Cache
                                 </button>
