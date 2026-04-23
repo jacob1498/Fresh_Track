@@ -1741,6 +1741,10 @@ function renderSettings() {
                                 <span class="w-8 h-8 rounded-full bg-indigo-600 shadow-md ring-2 ring-white"></span>
                                 <span class="text-[10px] font-bold text-gray-600 uppercase">Indigo</span>
                             </button>
+                            <button onclick="setTheme('oracle')" class="flex flex-col items-center gap-2 p-3 rounded-xl border border-gray-100 hover:bg-orange-50 transition group">
+                                <span class="w-8 h-8 rounded-full bg-[#c74634] shadow-md ring-2 ring-white"></span>
+                                <span class="text-[10px] font-bold text-gray-600 uppercase">Oracle</span>
+                            </button>
                             <button onclick="setTheme('teal')" class="flex flex-col items-center gap-2 p-3 rounded-xl border border-gray-100 hover:bg-teal-50 transition group">
                                 <span class="w-8 h-8 rounded-full bg-teal-500 shadow-md ring-2 ring-white"></span>
                                 <span class="text-[10px] font-bold text-gray-600 uppercase">Teal</span>

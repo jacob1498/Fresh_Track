@@ -18,6 +18,10 @@
         [data-theme="teal"] { --p: #0d9488; --pl: #ccfbf1; --s: #134e4a; }
         [data-theme="cream"] { --p: #b45309; --pl: #fff7ed; --s: #451a03; }
         [data-theme="pink"] { --p: #db2777; --pl: #fdf2f8; --s: #500724; }
+        [data-theme="oracle"] { --p: #c74634; --pl: #f9f8f7; --s: #2d2926; }
+
+        /* Oracle Redwood Background Override */
+        [data-theme="oracle"] body, [data-theme="oracle"] .bg-gray-50 { background-color: #f9f8f7 !important; }
 
         /* Primary Color Mapping */
         [data-theme] .bg-indigo-600 { background-color: var(--p) !important; }
@@ -53,6 +57,9 @@
 </head>
 <body class="bg-gray-50 font-sans antialiased">
 
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-6 right-6 z-[110] flex flex-col items-end pointer-events-none"></div>
+
     <!-- Global Loading Overlay -->
     <div id="loading-overlay" class="hidden fixed inset-0 z-[100] bg-slate-900/80 flex flex-col items-center justify-center">
         <div class="relative">
@@ -78,14 +85,42 @@
             <form id="login-form" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Email Address</label>
-                    <input type="email" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="admin@example.com">
+                    <input type="email" id="login-email" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="admin@example.com">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Password</label>
-                    <input type="password" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="••••••••">
+                    <input type="password" id="login-password" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="••••••••">
                 </div>
                 <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700 transition">Sign In</button>
             </form>
+            <p class="text-center text-sm text-gray-500 mt-4">
+                Need an account? <a href="#" onclick="toggleAuthViews('signup')" class="text-indigo-600 font-bold">Sign Up</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Signup Screen -->
+    <div id="signup-view" class="hidden relative z-10 min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-800">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md relative z-20">
+            <div class="text-center mb-8">
+                <i class="fas fa-user-plus text-indigo-500 text-6xl mb-4 drop-shadow-sm"></i>
+                <h1 class="text-2xl font-bold text-gray-800">Join FreshTrack</h1>
+                <p class="text-gray-500">Create a client account</p>
+            </div>
+            <form id="signup-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Email Address</label>
+                    <input type="email" id="signup-email" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="client@example.com">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="signup-password" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="••••••••">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700 transition">Request Access</button>
+            </form>
+            <p class="text-center text-sm text-gray-500 mt-4">
+                Already have an account? <a href="#" onclick="toggleAuthViews('login')" class="text-indigo-600 font-bold">Sign In</a>
+            </p>
         </div>
     </div>
 
@@ -118,6 +153,9 @@
                 </a>
                 <a href="#" onclick="showView('reports')" class="nav-link flex items-center p-3 rounded-lg hover:bg-slate-800 transition" title="Reports">
                     <i class="fas fa-file-contract w-5 flex-shrink-0 text-center"></i> <span class="sidebar-text-item ml-3 whitespace-nowrap">Reports</span>
+                </a>
+                <a href="#" id="nav-users" onclick="showView('users')" class="nav-link hidden flex items-center p-3 rounded-lg hover:bg-slate-800 transition" title="User Management">
+                    <i class="fas fa-users-cog w-5 flex-shrink-0 text-center"></i> <span class="sidebar-text-item ml-3 whitespace-nowrap">User Management</span>
                 </a>
                 <a href="#" onclick="showView('settings')" class="nav-link flex items-center p-3 rounded-lg hover:bg-slate-800 transition" title="Settings">
                     <i class="fas fa-cog w-5 flex-shrink-0 text-center"></i> <span class="sidebar-text-item ml-3 whitespace-nowrap">Settings</span>
@@ -194,6 +232,9 @@
 
                 <!-- Settings View (Hidden by default) -->
                 <div id="view-settings" class="view-content hidden"></div>
+
+                <!-- Users View (Hidden by default) -->
+                <div id="view-users" class="view-content hidden"></div>
             </main>
         </div>
     </div>
@@ -391,6 +432,26 @@
                     <button type="submit" class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition text-sm shadow-md shadow-indigo-100">Update Account</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Transaction Log Modal -->
+    <div id="transaction-log-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h3 class="text-lg font-bold text-gray-800">Transaction Log for <span id="log-item-description"></span></h3>
+                <button onclick="closeTransactionLogModal()" class="text-gray-400 hover:text-gray-600 transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6 max-h-[70vh] overflow-y-auto">
+                <div id="transaction-log-content" class="space-y-4">
+                    <!-- Transaction entries will be rendered here -->
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 text-right">
+                <button onclick="closeTransactionLogModal()" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition">Close</button>
+            </div>
         </div>
     </div>
 
