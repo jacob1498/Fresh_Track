@@ -11,6 +11,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <style>
         /* Theme System Overrides */
@@ -18,10 +19,17 @@
         [data-theme="teal"] { --p: #0d9488; --pl: #ccfbf1; --s: #134e4a; }
         [data-theme="cream"] { --p: #b45309; --pl: #fff7ed; --s: #451a03; }
         [data-theme="pink"] { --p: #db2777; --pl: #fdf2f8; --s: #500724; }
-        [data-theme="oracle"] { --p: #c74634; --pl: #f9f8f7; --s: #2d2926; }
+        [data-theme="oracle"] { --p: #c74634; --pl: #f2f1f0; --s: #2d2926; }
 
-        /* Oracle Redwood Background Override */
+        /* Oracle Redwood Typography & Layout Override */
+        [data-theme="oracle"] { font-family: 'Inter', sans-serif; }
         [data-theme="oracle"] body, [data-theme="oracle"] .bg-gray-50 { background-color: #f9f8f7 !important; }
+        [data-theme="oracle"] .shadow-sm, [data-theme="oracle"] .shadow-md { 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important; 
+            border: 1px solid #e5e2de !important;
+        }
+        [data-theme="oracle"] aside { width: 280px; }
+        [data-theme="oracle"] h1, [data-theme="oracle"] h2, [data-theme="oracle"] h3 { letter-spacing: -0.01em; }
 
         /* Primary Color Mapping */
         [data-theme] .bg-indigo-600 { background-color: var(--p) !important; }

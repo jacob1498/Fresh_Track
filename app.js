@@ -254,9 +254,9 @@ window.showView = function(viewId) {
 
     // Update Sidebar links
     document.querySelectorAll('.nav-link').forEach(link => {
-        link.classList.remove('bg-slate-800', 'text-white');
+        link.classList.remove('bg-slate-800', 'text-white', 'border-l-4', 'border-indigo-500');
         if (link.innerText.toLowerCase().includes(viewId)) {
-            link.classList.add('bg-slate-800');
+            link.classList.add('bg-slate-800', 'border-l-4', 'border-indigo-500');
         }
     });
 
@@ -280,35 +280,35 @@ function renderDashboard() {
     const totalCount = liveItems.length;
 
     document.getElementById('stats-grid').innerHTML = `
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all group">
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100 hover:border-red-200 transition-all group">
             <div class="flex justify-between items-start mb-4">
                 <div class="p-3 bg-red-50 text-red-600 rounded-xl group-hover:bg-red-600 group-hover:text-white transition-colors">
                     <i class="fas fa-calendar-times text-xl"></i>
                 </div>
-                <span class="text-[10px] font-black text-red-600 bg-red-50 px-2 py-1 rounded-full uppercase tracking-tighter">Immediate Action</span>
+                <span class="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-1 rounded uppercase">Action Required</span>
             </div>
-            <p class="text-sm text-gray-400 font-bold uppercase tracking-wider mb-1">Expired Items</p>
-            <p class="text-3xl font-black text-gray-900">${expiredCount}</p>
+            <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Expired Items</p>
+            <p class="text-4xl font-bold text-gray-900">${expiredCount}</p>
         </div>
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all group">
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100 hover:border-orange-200 transition-all group">
             <div class="flex justify-between items-start mb-4">
                 <div class="p-3 bg-orange-50 text-orange-600 rounded-xl group-hover:bg-orange-600 group-hover:text-white transition-colors">
                     <i class="fas fa-clock text-xl"></i>
                 </div>
-                <span class="text-[10px] font-black text-orange-600 bg-orange-50 px-2 py-1 rounded-full uppercase tracking-tighter">Review Soon</span>
+                <span class="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded uppercase">Review</span>
             </div>
-            <p class="text-sm text-gray-400 font-bold uppercase tracking-wider mb-1">Expiring Soon</p>
-            <p class="text-3xl font-black text-gray-900">${expiringCount}</p>
+            <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Expiring Soon</p>
+            <p class="text-4xl font-bold text-gray-900">${expiringCount}</p>
         </div>
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all group">
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100 hover:border-green-200 transition-all group">
             <div class="flex justify-between items-start mb-4">
                 <div class="p-3 bg-green-50 text-green-600 rounded-xl group-hover:bg-green-600 group-hover:text-white transition-colors">
                     <i class="fas fa-check-circle text-xl"></i>
                 </div>
-                <span class="text-[10px] font-black text-green-600 bg-green-50 px-2 py-1 rounded-full uppercase tracking-tighter">Healthy</span>
+                <span class="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded uppercase">Healthy</span>
             </div>
-            <p class="text-sm text-gray-400 font-bold uppercase tracking-wider mb-1">Active Stock</p>
-            <p class="text-3xl font-black text-gray-900">${activeCount}</p>
+            <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Active Stock</p>
+            <p class="text-4xl font-bold text-gray-900">${activeCount}</p>
         </div>
         <div class="bg-indigo-600 p-6 rounded-xl shadow-lg shadow-indigo-100 hover:shadow-indigo-200 transition-all group border border-indigo-500">
             <div class="flex justify-between items-start mb-4">
